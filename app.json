@@ -3,10 +3,11 @@
     "name": "Smart Gallery",
     "slug": "smart-gallery",
     "version": "1.0.0",
-    "orientation": "portrait",
-    "userInterfaceStyle": "light",
     "android": {
       "package": "com.phildunn1981.smartgallery"
+    },
+    "splash": {
+      "backgroundColor": "#ffffff"
     }
   }
 }
