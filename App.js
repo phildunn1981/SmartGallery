@@ -1,174 +1,156 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  StyleSheet, 
-  Text, 
-  View, 
-  TouchableOpacity, 
-  Image, 
-  Modal, 
-  Dimensions, 
-  StatusBar,
-  ActivityIndicator 
+  StyleSheet, Text, View, TouchableOpacity, Image, 
+  Modal, ActivityIndicator, StatusBar, SafeAreaView,
+  Dimensions, FlatList, Platform 
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Sharing from 'expo-sharing';
 import ImageViewer from 'react-native-image-zoom-viewer';
+import * as NavigationBar from 'expo-navigation-bar';
+
+const { width } = Dimensions.get('window');
+const THUMB_SIZE = (width - 40) / 3; 
 
 export default function App() {
-  const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedImages, setSelectedImages] = useState([]); 
   const [isViewerVisible, setIsViewerVisible] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Function to pick image from phone gallery
-  const pickImage = async () => {
+  // 1. Force the Android Navigation Bar to be transparent
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      NavigationBar.setBackgroundColorAsync('rgba(0,0,0,0)'); // Fully transparent
+      NavigationBar.setButtonStyleAsync('light'); // Makes home/back icons white
+    }
+  }, []);
+
+  const pickImages = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: false,
-      quality: 1,
+      allowsMultipleSelection: true,
+      quality: 0.6,
     });
 
-    if (!result.canceled) {
-      setSelectedImage(result.assets[0].uri);
+    if (!result.canceled && result.assets) {
+      const formattedImages = result.assets.map(asset => ({
+        url: asset.uri,
+        freeHeight: true 
+      }));
+      setSelectedImages(formattedImages);
     }
   };
 
-  // Function to share the current image
-  const shareImage = async () => {
-    if (selectedImage) {
-      await Sharing.shareAsync(selectedImage);
+  const shareCurrentImage = async () => {
+    if (selectedImages.length > 0) {
+      await Sharing.shareAsync(selectedImages[currentIndex].url);
     }
   };
-
-  // Prepare images for the Zoom Viewer
-  const images = selectedImage ? [{ url: selectedImage }] : [];
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+    <View style={styles.fullScreenContainer}>
+      {/* 2. Transparent Top Status Bar */}
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
       
-      <Text style={styles.title}>Smart Gallery</Text>
+      <SafeAreaView style={styles.container}>
+        <Text style={styles.title}>Smart Gallery</Text>
 
-      <View style={styles.imageContainer}>
-        {selectedImage ? (
-          <TouchableOpacity onPress={() => setIsViewerVisible(true)}>
-            <Image source={{ uri: selectedImage }} style={styles.previewImage} />
-            <Text style={styles.hintText}>Tap to zoom</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.placeholder}>
-            <Text style={styles.placeholderText}>No image selected</Text>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.button} onPress={pickImage}>
-          <Text style={styles.buttonText}>Open Gallery</Text>
-        </TouchableOpacity>
-
-        {selectedImage && (
-          <TouchableOpacity style={[styles.button, styles.shareButton]} onPress={shareImage}>
-            <Text style={styles.buttonText}>Share</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Full-screen Zoom Modal */}
-      <Modal visible={isViewerVisible} transparent={true} onRequestClose={() => setIsViewerVisible(false)}>
-        <ImageViewer 
-          imageUrls={images} 
-          enableSwipeDown={true}
-          onSwipeDown={() => setIsViewerVisible(false)}
-          loadingRender={() => <ActivityIndicator color="white" size="large" />}
-          renderHeader={() => (
-            <TouchableOpacity 
-              style={styles.closeButton} 
-              onPress={() => setIsViewerVisible(false)}
-            >
-              <Text style={styles.closeButtonText}>✕ Close</Text>
+        <View style={styles.gridContainer}>
+          {selectedImages.length > 0 ? (
+            <FlatList
+              data={selectedImages}
+              numColumns={3}
+              keyExtractor={(item, index) => index.toString()}
+              renderItem={({ item, index }) => (
+                <TouchableOpacity onPress={() => { setCurrentIndex(index); setIsViewerVisible(true); }}>
+                  <Image source={{ uri: item.url }} style={styles.thumbnail} />
+                </TouchableOpacity>
+              )}
+            />
+          ) : (
+            <TouchableOpacity style={styles.placeholder} onPress={pickImages}>
+              <Text style={styles.placeholderText}>+ Tap to Select Images</Text>
             </TouchableOpacity>
           )}
-        />
+        </View>
+
+        <View style={styles.mainActions}>
+          <TouchableOpacity style={styles.ghostBlueBtn} onPress={pickImages}>
+            <Text style={styles.tinyBtnText}>Change Selection</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+
+      {/* 3. Enlarged Photo Viewer */}
+      <Modal visible={isViewerVisible} transparent={true} onRequestClose={() => setIsViewerVisible(false)}>
+        <View style={{ flex: 1, backgroundColor: 'black' }}>
+          <ImageViewer 
+            imageUrls={selectedImages} 
+            index={currentIndex}
+            onChange={(idx) => setCurrentIndex(idx)}
+            enableSwipeDown={true}
+            onSwipeDown={() => setIsViewerVisible(false)}
+            loadingRender={() => <ActivityIndicator color="white" />}
+            
+            renderHeader={() => (
+              <SafeAreaView style={styles.header}>
+                <TouchableOpacity style={styles.ghostDarkBtn} onPress={() => setIsViewerVisible(false)}>
+                  <Text style={styles.tinyBtnText}>✕ Back</Text>
+                </TouchableOpacity>
+              </SafeAreaView>
+            )}
+
+            renderFooter={() => (
+              <View style={styles.footer}>
+                <TouchableOpacity style={styles.ghostGreenBtn} onPress={shareCurrentImage}>
+                  <Text style={styles.shareBtnText}>📤 Share</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          />
+        </View>
       </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
+  fullScreenContainer: { flex: 1, backgroundColor: '#121212' }, // Dark background for better transparency blending
+  container: { flex: 1, alignItems: 'center' },
+  title: { fontSize: 22, fontWeight: '800', marginTop: 40, marginBottom: 15, color: '#fff' },
+  gridContainer: { flex: 1, width: '100%', paddingHorizontal: 10 },
+  thumbnail: { width: THUMB_SIZE - 10, height: THUMB_SIZE - 10, borderRadius: 8, margin: 5 },
+  placeholder: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#333', borderRadius: 15, margin: 10 },
+  placeholderText: { color: '#888' },
+  mainActions: { paddingBottom: 80, paddingTop: 10 },
+  tinyBtnText: { color: '#ffffff', fontSize: 13, fontWeight: 'bold' },
+  shareBtnText: { color: '#ffffff', fontSize: 12, fontWeight: '800' },
+  ghostBlueBtn: {
+    backgroundColor: 'rgba(0, 122, 255, 0.3)', 
+    paddingVertical: 8, 
+    paddingHorizontal: 20, 
+    borderRadius: 20,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.2)'
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 30,
-    color: '#333',
-  },
-  imageContainer: {
-    width: '100%',
-    height: 400,
-    backgroundColor: '#e0e0e0',
+  ghostGreenBtn: { 
+    backgroundColor: 'rgba(52, 199, 89, 0.2)', // Tiny and very see-through
+    paddingVertical: 6, 
+    paddingHorizontal: 18, 
     borderRadius: 15,
-    overflow: 'hidden',
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.3)'
   },
-  previewImage: {
-    width: Dimensions.get('window').width - 40,
-    height: 400,
-    resizeMode: 'contain',
+  ghostDarkBtn: { 
+    backgroundColor: 'rgba(255, 255, 255, 0.1)', 
+    paddingVertical: 6, 
+    paddingHorizontal: 12, 
+    borderRadius: 15 
   },
-  placeholder: {
-    alignItems: 'center',
-  },
-  placeholderText: {
-    color: '#888',
-    fontSize: 16,
-  },
-  hintText: {
-    textAlign: 'center',
-    marginTop: 10,
-    color: '#666',
-    fontSize: 12,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    marginTop: 30,
-    gap: 15,
-  },
-  button: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 15,
-    paddingHorizontal: 25,
-    borderRadius: 10,
-  },
-  shareButton: {
-    backgroundColor: '#34C759',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 50,
-    right: 20,
-    zIndex: 99,
-    padding: 10,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 5,
-  },
-  closeButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
+  header: { position: 'absolute', top: 10, left: 15, zIndex: 10 },
+  footer: { 
+    width: '100%', 
+    alignItems: 'center', 
+    paddingBottom: 100 // Set to 100 as you requested
+  } 
 });
