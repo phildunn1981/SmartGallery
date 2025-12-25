@@ -7,7 +7,7 @@ workflows:
       - name: Install dependencies
         script: npm install
       - name: Prebuild Android
-        script: npx expo prebuild --platform android --no-install
+        script: npx expo prebuild --platform android --no-install --clean
       - name: Build Android APK
         script: |
           cd android
