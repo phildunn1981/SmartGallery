@@ -1,0 +1,20 @@
+workflows:
+  android-apk:
+    name: Small APK Build
+    max_build_duration: 60
+    instance_type: mac_mini_m1
+    scripts:
+      - name: Install dependencies
+        script: npm install
+      - name: Generate Native Folders
+        script: npx expo prebuild --platform android --no-install
+      - name: Build Tiny APK
+        script: |
+          cd android
+          ./gradlew assembleRelease -PtargetSystems=arm64-v8a
+    artifacts:
+      - android/app/build/outputs/apk/release/*.apk
+    publishing:
+      email:
+        recipients:
+          - sapolang@gmail.com
