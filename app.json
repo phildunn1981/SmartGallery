@@ -4,14 +4,9 @@
     "slug": "smart-gallery",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/snack-icon.png",
     "userInterfaceStyle": "light",
     "android": {
-      "package": "com.phildunn1981.smartgallery",
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/snack-icon.png",
-        "backgroundColor": "#ffffff"
-      }
+      "package": "com.phildunn1981.smartgallery"
     }
   }
 }
