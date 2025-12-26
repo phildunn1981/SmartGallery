@@ -1,16 +1,11 @@
 {
-  "name": "smart-gallery",
-  "version": "1.0.0",
-  "main": "node_modules/expo/AppEntry.js",
   "dependencies": {
     "expo": "~51.0.0",
     "expo-image-picker": "~15.0.7",
-    "expo-sharing": "~12.0.1",
     "expo-navigation-bar": "~3.0.7",
-    "expo-status-bar": "~1.12.1",
     "react": "18.2.0",
     "react-native": "0.74.5",
     "react-native-image-zoom-viewer": "^3.0.1",
-    "react-native-image-pan-zoom": "^2.1.1"
+    "react-native-share": "^10.2.2"
   }
 }
