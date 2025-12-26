@@ -97,13 +97,12 @@ export default function App() {
             )}
             renderFooter={(index) => (
               showControls && (
-                <View style={styles.footerOverlay}>
-                  {/* FIXED: Horizontal orientation and restored text */}
-                  <TouchableOpacity 
+                <View style={styles.footerFix}>
+                   <TouchableOpacity 
                     style={styles.minimalShareBtn} 
                     onPress={() => handleShare([images[index].url])}
                   >
-                    <Text style={styles.minimalShareText}>📤 Share</Text>
+                    <Text numberOfLines={1} style={styles.minimalShareText}>📤 Share This One</Text>
                   </TouchableOpacity>
                 </View>
               )
@@ -131,32 +130,30 @@ const styles = StyleSheet.create({
   cancelText: { color: '#FF3B30', fontWeight: 'bold' },
 
   headerContainer: { position: 'absolute', top: 40, left: 0, right: 0, zIndex: 100, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20 },
-  headerBtn: { backgroundColor: 'rgba(0,0,0,0.4)', paddingVertical: 8, paddingHorizontal: 15, borderRadius: 12 },
+  headerBtn: { backgroundColor: 'rgba(0,0,0,0.6)', paddingVertical: 8, paddingHorizontal: 15, borderRadius: 12 },
   headerBtnText: { color: 'white', fontWeight: 'bold', fontSize: 13 },
 
-  // FIXED FOOTER STYLE
-  footerOverlay: { 
+  footerFix: { 
     position: 'absolute', 
-    bottom: 60, 
-    left: 20, 
-    right: 20, 
-    flexDirection: 'row', // Ensures horizontal orientation
-    justifyContent: 'flex-start' 
+    bottom: 80, 
+    left: 20,
+    alignItems: 'flex-start',
+    zIndex: 999 
   },
   minimalShareBtn: { 
-    backgroundColor: 'rgba(255, 255, 255, 0.15)', 
-    paddingVertical: 8, 
-    paddingHorizontal: 16, 
-    borderRadius: 20, 
-    borderWidth: 1, 
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    flexDirection: 'row', // Keeps text and icon horizontal
+    // NEW: Removed background color for maximum transparency
+    backgroundColor: 'rgba(255, 255, 255, 0.05)', 
+    paddingVertical: 10, 
+    paddingHorizontal: 20, 
+    borderRadius: 25, 
+    borderWidth: 0.8, // Subtle border to keep it visible on dark images
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    flexDirection: 'row',
     alignItems: 'center'
   },
   minimalShareText: { 
     color: 'white', 
-    fontWeight: '600', 
-    fontSize: 14,
-    textAlign: 'center' 
+    fontWeight: 'bold', 
+    fontSize: 14
   }
 });
