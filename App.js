@@ -8,7 +8,6 @@ import * as NavigationBar from 'expo-navigation-bar';
 export default function App() {
   const [images, setImages] = useState([]); 
   const [isViewerVisible, setIsViewerVisible] = useState(false);
-  const [isChoiceVisible, setIsChoiceVisible] = useState(false);
   const [showControls, setShowControls] = useState(true);
 
   useEffect(() => {
@@ -28,13 +27,14 @@ export default function App() {
     if (!result.canceled && result.assets) {
       const formatted = result.assets.map(asset => ({ url: asset.uri }));
       setImages(formatted);
-      setIsChoiceVisible(true); 
+      // Directly show the viewer, skipping the "Ready to Proceed" modal
+      setIsViewerVisible(true); 
     }
   };
 
-  const handleShare = async (uris) => {
-    if (uris.length > 0) {
-      await Sharing.shareAsync(uris[0]);
+  const handleShare = async (uri) => {
+    if (uri) {
+      await Sharing.shareAsync(uri);
     }
   };
 
@@ -47,25 +47,6 @@ export default function App() {
           <Text style={styles.startBtnText}>+ Select Images</Text>
         </TouchableOpacity>
       </View>
-
-      <Modal visible={isChoiceVisible} transparent={true} animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.choiceBox}>
-            <Text style={styles.choiceTitle}>Ready to proceed</Text>
-            <TouchableOpacity style={styles.choiceBtnView} onPress={() => { setIsChoiceVisible(false); setIsViewerVisible(true); }}>
-              <Text style={styles.choiceBtnText}>🖼️ View & Browse</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.choiceBtnShare} onPress={() => { setIsChoiceVisible(false); handleShare(images.map(img => img.url)); }}>
-              <Text style={styles.shareBtnText}>📤 Share Immediately</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={{marginTop: 10}} onPress={() => setIsChoiceVisible(false)}>
-              <Text style={styles.cancelText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
 
       <Modal visible={isViewerVisible} transparent={true} onRequestClose={() => setIsViewerVisible(false)}>
         <View style={{ flex: 1, backgroundColor: 'black' }}>
@@ -91,9 +72,9 @@ export default function App() {
                 <View style={styles.footerFix}>
                    <TouchableOpacity 
                     style={styles.minimalShareBtn} 
-                    onPress={() => handleShare([images[index].url])}
+                    onPress={() => handleShare(images[index].url)}
                   >
-                    {/* RESTORED: Single line text with ultra-transparent style */}
+                    {/* Keeps the transparent horizontal style you liked */}
                     <Text numberOfLines={1} style={styles.minimalShareText}>📤 Share This One</Text>
                   </TouchableOpacity>
                 </View>
@@ -111,25 +92,6 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   startBtn: { backgroundColor: '#007AFF', paddingVertical: 18, paddingHorizontal: 45, borderRadius: 30 },
   startBtnText: { color: 'white', fontWeight: 'bold', fontSize: 18 },
-  
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' },
-  choiceBox: { backgroundColor: '#1E1E1E', width: '100%', padding: 30, borderTopLeftRadius: 30, borderTopRightRadius: 30, alignItems: 'center', paddingBottom: 50 },
-  choiceTitle: { color: '#888', fontSize: 13, marginBottom: 20, textTransform: 'uppercase' },
-  choiceBtnView: { backgroundColor: 'rgba(255, 255, 255, 0.1)', width: '100%', padding: 18, borderRadius: 15, marginBottom: 12, alignItems: 'center' },
-  choiceBtnText: { color: 'white', fontWeight: '700', fontSize: 16 },
-  
-  choiceBtnShare: { 
-    backgroundColor: 'rgba(52, 199, 89, 0.15)', // Very light green
-    width: '100%', 
-    padding: 20, 
-    borderRadius: 15, 
-    marginBottom: 15, 
-    alignItems: 'center', 
-    borderWidth: 1, 
-    borderColor: 'rgba(52, 199, 89, 0.25)' 
-  },
-  shareBtnText: { color: '#ffffff', fontWeight: '900', fontSize: 18 },
-  cancelText: { color: '#FF3B30', fontWeight: 'bold' },
 
   headerContainer: { position: 'absolute', top: 40, left: 0, right: 0, zIndex: 100, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20 },
   headerBtn: { backgroundColor: 'rgba(0,0,0,0.6)', paddingVertical: 8, paddingHorizontal: 15, borderRadius: 12 },
@@ -143,7 +105,7 @@ const styles = StyleSheet.create({
     zIndex: 999 
   },
   minimalShareBtn: { 
-    backgroundColor: 'rgba(255, 255, 255, 0.08)', // Ultra-transparent glass
+    backgroundColor: 'rgba(255, 255, 255, 0.08)', 
     paddingVertical: 12, 
     paddingHorizontal: 20, 
     borderRadius: 25, 
