@@ -34,7 +34,6 @@ export default function App() {
 
   const handleShare = async (uris) => {
     if (uris.length > 0) {
-      // Sharing just the first image if multiple are selected for maximum stability
       await Sharing.shareAsync(uris[0]);
     }
   };
@@ -57,7 +56,6 @@ export default function App() {
               <Text style={styles.choiceBtnText}>🖼️ View & Browse</Text>
             </TouchableOpacity>
             
-            {/* Ultra-transparent main share button */}
             <TouchableOpacity style={styles.choiceBtnShare} onPress={() => { setIsChoiceVisible(false); handleShare(images.map(img => img.url)); }}>
               <Text style={styles.shareBtnText}>📤 Share Immediately</Text>
             </TouchableOpacity>
@@ -95,7 +93,7 @@ export default function App() {
                     style={styles.minimalShareBtn} 
                     onPress={() => handleShare([images[index].url])}
                   >
-                    {/* One line text with high transparency background */}
+                    {/* RESTORED: Single line text with ultra-transparent style */}
                     <Text numberOfLines={1} style={styles.minimalShareText}>📤 Share This One</Text>
                   </TouchableOpacity>
                 </View>
@@ -121,14 +119,14 @@ const styles = StyleSheet.create({
   choiceBtnText: { color: 'white', fontWeight: '700', fontSize: 16 },
   
   choiceBtnShare: { 
-    backgroundColor: 'rgba(52, 199, 89, 0.2)', // Very transparent green
+    backgroundColor: 'rgba(52, 199, 89, 0.15)', // Very light green
     width: '100%', 
     padding: 20, 
     borderRadius: 15, 
     marginBottom: 15, 
     alignItems: 'center', 
     borderWidth: 1, 
-    borderColor: 'rgba(52, 199, 89, 0.3)' 
+    borderColor: 'rgba(52, 199, 89, 0.25)' 
   },
   shareBtnText: { color: '#ffffff', fontWeight: '900', fontSize: 18 },
   cancelText: { color: '#FF3B30', fontWeight: 'bold' },
@@ -150,7 +148,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20, 
     borderRadius: 25, 
     borderWidth: 0.8, 
-    borderColor: 'rgba(255, 255, 255, 0.25)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     flexDirection: 'row',
     alignItems: 'center'
   },
@@ -158,6 +156,6 @@ const styles = StyleSheet.create({
     color: 'white', 
     fontWeight: 'bold', 
     fontSize: 14,
-    flexWrap: 'nowrap' // Prevents text stacking in vertical pill shape
+    flexWrap: 'nowrap'
   }
 });
