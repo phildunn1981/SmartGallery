@@ -5,13 +5,6 @@ import * as Sharing from 'expo-sharing';
 import ImageViewer from 'react-native-image-zoom-viewer';
 import * as NavigationBar from 'expo-navigation-bar';
 
-let MultiShare;
-try {
-  MultiShare = require('react-native-share').default;
-} catch (e) {
-  MultiShare = null;
-}
-
 export default function App() {
   const [images, setImages] = useState([]); 
   const [isViewerVisible, setIsViewerVisible] = useState(false);
@@ -29,7 +22,7 @@ export default function App() {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
-      quality: 0.7,
+      quality: 0.8,
     });
 
     if (!result.canceled && result.assets) {
@@ -40,11 +33,8 @@ export default function App() {
   };
 
   const handleShare = async (uris) => {
-    if (MultiShare && uris.length > 1) {
-      try {
-        await MultiShare.open({ urls: uris, failOnCancel: false });
-      } catch (error) { console.log(error); }
-    } else {
+    if (uris.length > 0) {
+      // Sharing just the first image if multiple are selected for maximum stability
       await Sharing.shareAsync(uris[0]);
     }
   };
@@ -66,9 +56,12 @@ export default function App() {
             <TouchableOpacity style={styles.choiceBtnView} onPress={() => { setIsChoiceVisible(false); setIsViewerVisible(true); }}>
               <Text style={styles.choiceBtnText}>🖼️ View & Browse</Text>
             </TouchableOpacity>
+            
+            {/* Ultra-transparent main share button */}
             <TouchableOpacity style={styles.choiceBtnShare} onPress={() => { setIsChoiceVisible(false); handleShare(images.map(img => img.url)); }}>
-              <Text style={styles.shareBtnText}>📤 Share All ({images.length})</Text>
+              <Text style={styles.shareBtnText}>📤 Share Immediately</Text>
             </TouchableOpacity>
+
             <TouchableOpacity style={{marginTop: 10}} onPress={() => setIsChoiceVisible(false)}>
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
@@ -102,7 +95,7 @@ export default function App() {
                     style={styles.minimalShareBtn} 
                     onPress={() => handleShare([images[index].url])}
                   >
-                    {/* FIXED: One line only, no wrapping */}
+                    {/* One line text with high transparency background */}
                     <Text numberOfLines={1} style={styles.minimalShareText}>📤 Share This One</Text>
                   </TouchableOpacity>
                 </View>
@@ -126,7 +119,17 @@ const styles = StyleSheet.create({
   choiceTitle: { color: '#888', fontSize: 13, marginBottom: 20, textTransform: 'uppercase' },
   choiceBtnView: { backgroundColor: 'rgba(255, 255, 255, 0.1)', width: '100%', padding: 18, borderRadius: 15, marginBottom: 12, alignItems: 'center' },
   choiceBtnText: { color: 'white', fontWeight: '700', fontSize: 16 },
-  choiceBtnShare: { backgroundColor: 'rgba(52, 199, 89, 0.35)', width: '100%', padding: 20, borderRadius: 15, marginBottom: 15, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(52, 199, 89, 0.5)' },
+  
+  choiceBtnShare: { 
+    backgroundColor: 'rgba(52, 199, 89, 0.2)', // Very transparent green
+    width: '100%', 
+    padding: 20, 
+    borderRadius: 15, 
+    marginBottom: 15, 
+    alignItems: 'center', 
+    borderWidth: 1, 
+    borderColor: 'rgba(52, 199, 89, 0.3)' 
+  },
   shareBtnText: { color: '#ffffff', fontWeight: '900', fontSize: 18 },
   cancelText: { color: '#FF3B30', fontWeight: 'bold' },
 
@@ -142,21 +145,19 @@ const styles = StyleSheet.create({
     zIndex: 999 
   },
   minimalShareBtn: { 
-    // FIXED: Ultra-transparent with horizontal flex
-    backgroundColor: 'rgba(255, 255, 255, 0.05)', 
-    paddingVertical: 10, 
+    backgroundColor: 'rgba(255, 255, 255, 0.08)', // Ultra-transparent glass
+    paddingVertical: 12, 
     paddingHorizontal: 20, 
     borderRadius: 25, 
     borderWidth: 0.8, 
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: 'rgba(255, 255, 255, 0.25)',
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center'
+    alignItems: 'center'
   },
   minimalShareText: { 
     color: 'white', 
     fontWeight: 'bold', 
     fontSize: 14,
-    flexWrap: 'nowrap'
+    flexWrap: 'nowrap' // Prevents text stacking in vertical pill shape
   }
 });
