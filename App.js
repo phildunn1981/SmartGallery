@@ -16,7 +16,7 @@ export default function App() {
   const [images, setImages] = useState([]); 
   const [isViewerVisible, setIsViewerVisible] = useState(false);
   const [isChoiceVisible, setIsChoiceVisible] = useState(false);
-  const [showControls, setShowControls] = useState(true); // Track if buttons should show
+  const [showControls, setShowControls] = useState(true);
 
   useEffect(() => {
     if (Platform.OS === 'android') {
@@ -82,7 +82,7 @@ export default function App() {
             imageUrls={images} 
             onSwipeDown={() => setIsViewerVisible(false)}
             enableSwipeDown={true}
-            onClick={() => setShowControls(!showControls)} // Toggles buttons on tap
+            onClick={() => setShowControls(!showControls)}
             renderHeader={() => (
               showControls && (
                 <SafeAreaView style={styles.headerContainer}>
@@ -98,6 +98,7 @@ export default function App() {
             renderFooter={(index) => (
               showControls && (
                 <View style={styles.footerOverlay}>
+                  {/* FIXED: Horizontal orientation and restored text */}
                   <TouchableOpacity 
                     style={styles.minimalShareBtn} 
                     onPress={() => handleShare([images[index].url])}
@@ -133,15 +134,29 @@ const styles = StyleSheet.create({
   headerBtn: { backgroundColor: 'rgba(0,0,0,0.4)', paddingVertical: 8, paddingHorizontal: 15, borderRadius: 12 },
   headerBtnText: { color: 'white', fontWeight: 'bold', fontSize: 13 },
 
-  footerOverlay: { position: 'absolute', bottom: 50, left: 20, width: '100%', zIndex: 100 },
+  // FIXED FOOTER STYLE
+  footerOverlay: { 
+    position: 'absolute', 
+    bottom: 60, 
+    left: 20, 
+    right: 20, 
+    flexDirection: 'row', // Ensures horizontal orientation
+    justifyContent: 'flex-start' 
+  },
   minimalShareBtn: { 
-    backgroundColor: 'rgba(255, 255, 255, 0.1)', // Even more transparent white/glass look
-    paddingVertical: 6, 
-    paddingHorizontal: 14, 
+    backgroundColor: 'rgba(255, 255, 255, 0.15)', 
+    paddingVertical: 8, 
+    paddingHorizontal: 16, 
     borderRadius: 20, 
     borderWidth: 1, 
     borderColor: 'rgba(255, 255, 255, 0.2)',
-    alignSelf: 'flex-start'
+    flexDirection: 'row', // Keeps text and icon horizontal
+    alignItems: 'center'
   },
-  minimalShareText: { color: 'white', fontWeight: '600', fontSize: 12 }
+  minimalShareText: { 
+    color: 'white', 
+    fontWeight: '600', 
+    fontSize: 14,
+    textAlign: 'center' 
+  }
 });
