@@ -102,6 +102,7 @@ export default function App() {
                     style={styles.minimalShareBtn} 
                     onPress={() => handleShare([images[index].url])}
                   >
+                    {/* FIXED: One line only, no wrapping */}
                     <Text numberOfLines={1} style={styles.minimalShareText}>📤 Share This One</Text>
                   </TouchableOpacity>
                 </View>
@@ -141,19 +142,21 @@ const styles = StyleSheet.create({
     zIndex: 999 
   },
   minimalShareBtn: { 
-    // NEW: Removed background color for maximum transparency
+    // FIXED: Ultra-transparent with horizontal flex
     backgroundColor: 'rgba(255, 255, 255, 0.05)', 
     paddingVertical: 10, 
     paddingHorizontal: 20, 
     borderRadius: 25, 
-    borderWidth: 0.8, // Subtle border to keep it visible on dark images
+    borderWidth: 0.8, 
     borderColor: 'rgba(255, 255, 255, 0.3)',
     flexDirection: 'row',
-    alignItems: 'center'
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   minimalShareText: { 
     color: 'white', 
     fontWeight: 'bold', 
-    fontSize: 14
+    fontSize: 14,
+    flexWrap: 'nowrap'
   }
 });
