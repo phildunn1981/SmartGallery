@@ -16,6 +16,7 @@ export default function App() {
   const [images, setImages] = useState([]); 
   const [isViewerVisible, setIsViewerVisible] = useState(false);
   const [isChoiceVisible, setIsChoiceVisible] = useState(false);
+  const [showControls, setShowControls] = useState(true); // Track if buttons should show
 
   useEffect(() => {
     if (Platform.OS === 'android') {
@@ -62,16 +63,12 @@ export default function App() {
         <View style={styles.modalOverlay}>
           <View style={styles.choiceBox}>
             <Text style={styles.choiceTitle}>Ready to proceed</Text>
-            
             <TouchableOpacity style={styles.choiceBtnView} onPress={() => { setIsChoiceVisible(false); setIsViewerVisible(true); }}>
               <Text style={styles.choiceBtnText}>🖼️ View & Browse</Text>
             </TouchableOpacity>
-
-            {/* LIGHTER & TRANSLUCENT GREEN BUTTON */}
             <TouchableOpacity style={styles.choiceBtnShare} onPress={() => { setIsChoiceVisible(false); handleShare(images.map(img => img.url)); }}>
               <Text style={styles.shareBtnText}>📤 Share All ({images.length})</Text>
             </TouchableOpacity>
-
             <TouchableOpacity style={{marginTop: 10}} onPress={() => setIsChoiceVisible(false)}>
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
@@ -85,22 +82,30 @@ export default function App() {
             imageUrls={images} 
             onSwipeDown={() => setIsViewerVisible(false)}
             enableSwipeDown={true}
+            onClick={() => setShowControls(!showControls)} // Toggles buttons on tap
             renderHeader={() => (
-              <SafeAreaView style={styles.headerContainer}>
-                <TouchableOpacity style={styles.headerBtn} onPress={() => setIsViewerVisible(false)}>
-                  <Text style={styles.headerBtnText}>✕ Close</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.headerBtn} onPress={pickImages}>
-                  <Text style={styles.headerBtnText}>🔄 Pick New</Text>
-                </TouchableOpacity>
-              </SafeAreaView>
+              showControls && (
+                <SafeAreaView style={styles.headerContainer}>
+                  <TouchableOpacity style={styles.headerBtn} onPress={() => setIsViewerVisible(false)}>
+                    <Text style={styles.headerBtnText}>✕ Back</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.headerBtn} onPress={pickImages}>
+                    <Text style={styles.headerBtnText}>🔄 Pick New</Text>
+                  </TouchableOpacity>
+                </SafeAreaView>
+              )
             )}
             renderFooter={(index) => (
-              <View style={styles.footer}>
-                <TouchableOpacity style={styles.ghostShare} onPress={() => handleShare([images[index].url])}>
-                  <Text style={{color:'white', fontWeight:'800'}}>📤 Share This One</Text>
-                </TouchableOpacity>
-              </View>
+              showControls && (
+                <View style={styles.footerOverlay}>
+                  <TouchableOpacity 
+                    style={styles.minimalShareBtn} 
+                    onPress={() => handleShare([images[index].url])}
+                  >
+                    <Text style={styles.minimalShareText}>📤 Share</Text>
+                  </TouchableOpacity>
+                </View>
+              )
             )}
           />
         </View>
@@ -114,29 +119,29 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   startBtn: { backgroundColor: '#007AFF', paddingVertical: 18, paddingHorizontal: 45, borderRadius: 30 },
   startBtnText: { color: 'white', fontWeight: 'bold', fontSize: 18 },
+  
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' },
   choiceBox: { backgroundColor: '#1E1E1E', width: '100%', padding: 30, borderTopLeftRadius: 30, borderTopRightRadius: 30, alignItems: 'center', paddingBottom: 50 },
   choiceTitle: { color: '#888', fontSize: 13, marginBottom: 20, textTransform: 'uppercase' },
   choiceBtnView: { backgroundColor: 'rgba(255, 255, 255, 0.1)', width: '100%', padding: 18, borderRadius: 15, marginBottom: 12, alignItems: 'center' },
   choiceBtnText: { color: 'white', fontWeight: '700', fontSize: 16 },
-  
-  // ADJUSTED: Lighter Translucent Green Style
-  choiceBtnShare: { 
-    backgroundColor: 'rgba(52, 199, 89, 0.35)', // Lighter, more transparent green
-    width: '100%', 
-    padding: 20, 
-    borderRadius: 15, 
-    marginBottom: 15, 
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(52, 199, 89, 0.5)' // Subtle edge line
-  },
+  choiceBtnShare: { backgroundColor: 'rgba(52, 199, 89, 0.35)', width: '100%', padding: 20, borderRadius: 15, marginBottom: 15, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(52, 199, 89, 0.5)' },
   shareBtnText: { color: '#ffffff', fontWeight: '900', fontSize: 18 },
-  
   cancelText: { color: '#FF3B30', fontWeight: 'bold' },
-  footer: { width: '100%', alignItems: 'center', paddingBottom: 100 },
-  ghostShare: { backgroundColor: 'rgba(52, 199, 89, 0.2)', paddingVertical: 10, paddingHorizontal: 40, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(52, 199, 89, 0.4)' },
+
   headerContainer: { position: 'absolute', top: 40, left: 0, right: 0, zIndex: 100, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20 },
-  headerBtn: { backgroundColor: 'rgba(255,255,255,0.15)', paddingVertical: 8, paddingHorizontal: 15, borderRadius: 12 },
-  headerBtnText: { color: 'white', fontWeight: 'bold', fontSize: 13 }
+  headerBtn: { backgroundColor: 'rgba(0,0,0,0.4)', paddingVertical: 8, paddingHorizontal: 15, borderRadius: 12 },
+  headerBtnText: { color: 'white', fontWeight: 'bold', fontSize: 13 },
+
+  footerOverlay: { position: 'absolute', bottom: 50, left: 20, width: '100%', zIndex: 100 },
+  minimalShareBtn: { 
+    backgroundColor: 'rgba(255, 255, 255, 0.1)', // Even more transparent white/glass look
+    paddingVertical: 6, 
+    paddingHorizontal: 14, 
+    borderRadius: 20, 
+    borderWidth: 1, 
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    alignSelf: 'flex-start'
+  },
+  minimalShareText: { color: 'white', fontWeight: '600', fontSize: 12 }
 });
