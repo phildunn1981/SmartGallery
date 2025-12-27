@@ -1,22 +1,17 @@
 {
   "expo": {
-    "name": "Smart Gallery",
-    "slug": "smart-gallery",
+    "name": "My Gallery App",
+    "slug": "my-gallery-app",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
+    "icon": "./icon.png",
     "userInterfaceStyle": "dark",
-    "splash": {
-      "resizeMode": "contain",
-      "backgroundColor": "#121212"
-    },
-    "ios": {
-      "supportsTablet": true
-    },
     "android": {
-      "package": "com.phildunn.smartgallery",
       "adaptiveIcon": {
+        "foregroundImage": "./icon.png",
         "backgroundColor": "#121212"
-      }
+      },
+      "package": "com.yourname.galleryapp"
     }
   }
 }
