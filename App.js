@@ -6,7 +6,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import * as Sharing from 'expo-sharing'; 
 import ImageViewer from 'react-native-image-zoom-viewer';
-import * as FileSystem from 'expo-file-system'; // Added for image details
+import * as FileSystem from 'expo-file-system'; 
 import * as NavigationBar from 'expo-navigation-bar';
 import * as ScreenOrientation from 'expo-screen-orientation';
 
@@ -29,38 +29,37 @@ export default function App() {
           await NavigationBar.setBackgroundColorAsync('#ffffff');
           await NavigationBar.setButtonStyleAsync('dark');
         }
-      } catch (e) { console.log("Orientation error:", e); }
+      } catch (e) { console.log("Init error:", e); }
     }
     initSettings();
   }, []);
 
-  // Function to get file details (size, name, etc.)
   const fetchImageDetails = async (uri) => {
     try {
       const fileInfo = await FileSystem.getInfoAsync(uri);
-      if (fileInfo.exists) {
+      // Calculating Resolution and Megapixels
+      Image.getSize(uri, (width, height) => {
         const name = uri.split('/').pop();
-        const sizeMB = (fileInfo.size / (1024 * 1024)).toFixed(2);
-        const sizeKB = (fileInfo.size / 1024).toFixed(2);
+        const megapixels = ((width * height) / 1000000).toFixed(1);
         
         setImageDetails({
           name: name,
-          size: fileInfo.size > 1024 * 1024 ? `${sizeMB} MB` : `${sizeKB} KB`,
-          extension: name.split('.').pop().toUpperCase(),
-          path: uri
+          size: fileInfo.size > 1024 * 1024 
+            ? `${(fileInfo.size / (1024 * 1024)).toFixed(2)} MB` 
+            : `${(fileInfo.size / 1024).toFixed(0)} KB`,
+          path: uri,
+          resolution: `${width} * ${height} (${megapixels}MP)`,
+          modified: new Date(fileInfo.modificationTime * 1000).toLocaleString('en-GB')
         });
-      }
-    } catch (error) {
-      console.log("Error fetching details:", error);
-    }
+      });
+    } catch (e) { console.log("Info error:", e); }
   };
 
   const pickImages = async () => {
-    setIsViewerVisible(false);
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
-      quality: 0.8,
+      quality: 1,
     });
 
     if (!result.canceled && result.assets) {
@@ -69,12 +68,15 @@ export default function App() {
       setRotation(0); 
       setCurrentIndex(0);
       fetchImageDetails(result.assets[0].uri);
-      setTimeout(() => setIsViewerVisible(true), 10); 
+      setIsViewerVisible(true);
     }
   };
 
-  const handleManualRotate = () => {
-    setRotation((prev) => (prev + 90) % 360); 
+  const handleShare = async () => {
+    const currentUri = images[currentIndex]?.url;
+    if (currentUri && await Sharing.isAvailableAsync()) {
+      await Sharing.shareAsync(currentUri);
+    }
   };
 
   return (
@@ -83,66 +85,54 @@ export default function App() {
       
       <ImageBackground source={BG_IMAGE} style={styles.background} resizeMode="cover">
         <View style={styles.overlay}>
-          <View style={styles.center}>
-            <TouchableOpacity activeOpacity={0.7} style={styles.glassBtn} onPress={pickImages}>
-              <Text style={styles.glassBtnText}>+ Select Images</Text>
-            </TouchableOpacity>
-            <View style={styles.glassSubtitleContainer}>
-              <Text style={styles.subtitleText}>Smart Gallery</Text>
-            </View>
-          </View>
+          <TouchableOpacity activeOpacity={0.7} style={styles.glassBtn} onPress={pickImages}>
+            <Text style={styles.glassBtnText}>+ Select Images</Text>
+          </TouchableOpacity>
         </View>
       </ImageBackground>
 
-      <Modal 
-        visible={isViewerVisible} 
-        transparent={false} 
-        animationType="fade" 
-        onRequestClose={() => setIsViewerVisible(false)}
-      >
+      <Modal visible={isViewerVisible} transparent={false} animationType="fade">
         <View style={{ flex: 1, backgroundColor: 'black' }}>
           <ImageViewer 
             imageUrls={images} 
             index={currentIndex}
             onSwipeDown={() => setIsViewerVisible(false)}
             enableSwipeDown={true}
-            onChange={(index) => {
-              setCurrentIndex(index);
-              fetchImageDetails(images[index].url);
-            }}
-            onClick={() => {
-              setShowControls(!showControls);
-              if(showInfo) setShowInfo(false);
+            onChange={(idx) => {
+              setCurrentIndex(idx);
+              fetchImageDetails(images[idx].url);
             }}
             renderHeader={() => (
-              showControls && (
-                <SafeAreaView style={styles.headerContainer}>
-                  <TouchableOpacity style={styles.headerBtn} onPress={() => setIsViewerVisible(false)}>
-                    <Text style={styles.headerBtnText}>✕ Close</Text>
-                  </TouchableOpacity>
-                  
-                  {/* NEW INFO BUTTON */}
-                  <TouchableOpacity style={styles.headerBtn} onPress={() => setShowInfo(!showInfo)}>
-                    <Text style={[styles.headerBtnText, {color: '#4dabf7'}]}>ⓘ Info</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity style={styles.headerBtn} onPress={handleManualRotate}>
-                    <Text style={styles.headerBtnText}>⟳ Rotate</Text>
-                  </TouchableOpacity>
-                </SafeAreaView>
-              )
+              <SafeAreaView style={styles.header}>
+                <TouchableOpacity style={styles.btn} onPress={() => setIsViewerVisible(false)}>
+                  <Text style={styles.blueText}>✕ Close</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.btn} onPress={() => setShowInfo(!showInfo)}>
+                  <Text style={styles.whiteText}>{currentIndex + 1}/{images.length} ⓘ Info</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.btn} onPress={() => setRotation((r) => (r + 90) % 360)}>
+                  <Text style={styles.blueText}>⟳ Rotate</Text>
+                </TouchableOpacity>
+              </SafeAreaView>
+            )}
+            renderFooter={() => (
+              <SafeAreaView style={styles.footer}>
+                <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
+                  <Text style={styles.shareBtnText}>📤 Share Image</Text>
+                </TouchableOpacity>
+              </SafeAreaView>
             )}
           />
 
-          {/* IMAGE INFO PANEL (GLASS EFFECT) */}
           {showInfo && imageDetails && (
             <View style={styles.infoPanel}>
-              <Text style={styles.infoTitle}>Image Details</Text>
-              <View style={styles.infoRow}><Text style={styles.infoLabel}>Name:</Text><Text style={styles.infoValue}>{imageDetails.name}</Text></View>
-              <View style={styles.infoRow}><Text style={styles.infoLabel}>Size:</Text><Text style={styles.infoValue}>{imageDetails.size}</Text></View>
-              <View style={styles.infoRow}><Text style={styles.infoLabel}>Type:</Text><Text style={styles.infoValue}>{imageDetails.extension}</Text></View>
-              <TouchableOpacity style={styles.closeInfoBtn} onPress={() => setShowInfo(false)}>
-                <Text style={styles.closeInfoText}>Hide Details</Text>
+              <Text style={styles.infoText}><Text style={styles.bold}>Name:</Text> {imageDetails.name}</Text>
+              <Text style={styles.infoText}><Text style={styles.bold}>Size:</Text> {imageDetails.size}</Text>
+              <Text style={styles.infoText}><Text style={styles.bold}>Path:</Text> {imageDetails.path}</Text>
+              <Text style={styles.infoText}><Text style={styles.bold}>Resolution:</Text> {imageDetails.resolution}</Text>
+              <Text style={styles.infoText}><Text style={styles.bold}>Last Modified:</Text> {imageDetails.modified}</Text>
+              <TouchableOpacity style={styles.closeInfo} onPress={() => setShowInfo(false)}>
+                <Text style={styles.whiteText}>Hide Info</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -153,38 +143,20 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
-  background: { flex: 1, width: '100%', height: '100%' },
-  overlay: { flex: 1, backgroundColor: 'rgba(255,255,255,0.05)', justifyContent: 'center', alignItems: 'center' },
-  center: { alignItems: 'center', marginTop: '45%' },
-  glassBtn: { backgroundColor: 'rgba(255, 255, 255, 0.4)', paddingVertical: 18, paddingHorizontal: 40, borderRadius: 20, borderWidth: 1.5, borderColor: 'rgba(255, 255, 255, 0.6)' },
-  glassBtnText: { color: '#003366', fontWeight: 'bold', fontSize: 20 },
-  glassSubtitleContainer: { marginTop: 20, backgroundColor: 'rgba(0, 0, 0, 0.05)', paddingHorizontal: 20, paddingVertical: 5, borderRadius: 30 },
-  subtitleText: { color: '#444', fontSize: 14, fontWeight: '600', letterSpacing: 2 },
-  
-  // VIEWER HEADER
-  headerContainer: { position: 'absolute', top: 40, left: 0, right: 0, zIndex: 100, flexDirection: 'row', justifyContent: 'space-evenly' },
-  headerBtn: { backgroundColor: 'rgba(255,255,255,0.15)', paddingVertical: 10, paddingHorizontal: 15, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
-  headerBtnText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
-
-  // INFO PANEL
-  infoPanel: {
-    position: 'absolute',
-    bottom: 0,
-    width: '100%',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderTopLeftRadius: 25,
-    borderTopRightRadius: 25,
-    padding: 25,
-    shadowColor: '#000',
-    shadowOpacity: 0.5,
-    shadowRadius: 15,
-    elevation: 20,
-  },
-  infoTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, color: '#000' },
-  infoRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, borderBottomWidth: 0.5, borderBottomColor: '#eee', paddingBottom: 5 },
-  infoLabel: { color: '#666', fontWeight: '600' },
-  infoValue: { color: '#000', flex: 1, textAlign: 'right', marginLeft: 10 },
-  closeInfoBtn: { marginTop: 15, backgroundColor: '#000', padding: 12, borderRadius: 15, alignItems: 'center' },
-  closeInfoText: { color: '#fff', fontWeight: 'bold' }
+  container: { flex: 1 },
+  background: { flex: 1 },
+  overlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.1)' },
+  glassBtn: { backgroundColor: 'rgba(255,255,255,0.4)', padding: 20, borderRadius: 20, borderWidth: 1, borderColor: 'white' },
+  glassBtnText: { color: '#003366', fontWeight: 'bold', fontSize: 18 },
+  header: { position: 'absolute', top: 40, width: '100%', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, zIndex: 10 },
+  btn: { backgroundColor: 'rgba(0,0,0,0.6)', padding: 10, borderRadius: 12 },
+  blueText: { color: '#4dabf7', fontWeight: 'bold' },
+  whiteText: { color: 'white', fontWeight: 'bold' },
+  footer: { position: 'absolute', bottom: 50, left: 20, zIndex: 10 },
+  shareBtn: { backgroundColor: 'white', padding: 12, borderRadius: 25, paddingHorizontal: 20 },
+  shareBtnText: { color: 'black', fontWeight: 'bold' },
+  infoPanel: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'rgba(255,255,255,0.95)', padding: 25, borderTopLeftRadius: 20, borderTopRightRadius: 20 },
+  infoText: { fontSize: 13, marginBottom: 5, color: '#333' },
+  bold: { fontWeight: 'bold' },
+  closeInfo: { marginTop: 15, backgroundColor: '#000', padding: 12, borderRadius: 10, alignItems: 'center' }
 });
