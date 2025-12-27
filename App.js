@@ -15,6 +15,8 @@ const BG_IMAGE = require('./assets/fuji.jpg');
 export default function App() {
   const [images, setImages] = useState([]); 
   const [isViewerVisible, setIsViewerVisible] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const [rotation, setRotation] = useState(0); 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showInfo, setShowInfo] = useState(false);
   const [imageDetails, setImageDetails] = useState(null);
@@ -61,9 +63,11 @@ export default function App() {
     if (!result.canceled && result.assets) {
       const formatted = result.assets.map(asset => ({ url: asset.uri }));
       setImages(formatted);
+      setRotation(0); 
       setCurrentIndex(0);
       fetchImageDetails(result.assets[0].uri);
       setIsViewerVisible(true);
+      setShowControls(true);
     }
   };
 
@@ -72,6 +76,11 @@ export default function App() {
     if (currentUri && await Sharing.isAvailableAsync()) {
       await Sharing.shareAsync(currentUri);
     }
+  };
+
+  const toggleControls = () => {
+    setShowControls(!showControls);
+    if (showInfo) setShowInfo(false);
   };
 
   return (
@@ -92,26 +101,38 @@ export default function App() {
             index={currentIndex}
             onSwipeDown={() => setIsViewerVisible(false)}
             enableSwipeDown={true}
-            onChange={(idx) => { setCurrentIndex(idx); fetchImageDetails(images[idx].url); }}
+            onClick={toggleControls}
+            renderIndicator={() => null} // Removes the extra page number text
+            onChange={(idx) => { setCurrentIndex(idx); setRotation(0); fetchImageDetails(images[idx].url); }}
+            renderImage={(props) => (
+              <Image 
+                {...props} 
+                style={[props.style, { transform: [{ rotate: `${rotation}deg` }] }]} 
+              />
+            )}
             renderHeader={() => (
-              <SafeAreaView style={styles.header}>
-                <TouchableOpacity style={styles.btn} onPress={() => setIsViewerVisible(false)}>
-                  <Text style={styles.blueText}>✕ Close</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.btn} onPress={() => setShowInfo(!showInfo)}>
-                  <Text style={styles.whiteText}>{currentIndex + 1}/{images.length} ⓘ Info</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.btn} onPress={() => {/* Rotate logic if needed */}}>
-                  <Text style={styles.blueText}>⟳ Rotate</Text>
-                </TouchableOpacity>
-              </SafeAreaView>
+              showControls && (
+                <SafeAreaView style={styles.header}>
+                  <TouchableOpacity style={styles.btn} onPress={() => setIsViewerVisible(false)}>
+                    <Text style={styles.blueText}>✕ Close</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.btn} onPress={() => setShowInfo(!showInfo)}>
+                    <Text style={styles.whiteText}>{currentIndex + 1}/{images.length} ⓘ Info</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.btn} onPress={() => setRotation((r) => (r + 90) % 360)}>
+                    <Text style={styles.blueText}>⟳ Rotate</Text>
+                  </TouchableOpacity>
+                </SafeAreaView>
+              )
             )}
             renderFooter={() => (
-              <View style={styles.footer}>
-                <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
-                  <Text style={styles.shareBtnText}>📤 Share</Text>
-                </TouchableOpacity>
-              </View>
+              showControls && (
+                <View style={styles.footer}>
+                  <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
+                    <Text style={styles.shareBtnText}>📤 Share Image</Text>
+                  </TouchableOpacity>
+                </View>
+              )
             )}
           />
 
@@ -140,16 +161,16 @@ const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.1)' },
   glassBtn: { backgroundColor: 'rgba(255,255,255,0.4)', padding: 20, borderRadius: 20, borderWidth: 1, borderColor: 'white' },
   glassBtnText: { color: '#003366', fontWeight: 'bold', fontSize: 18 },
-  header: { position: 'absolute', top: 40, width: '100%', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, zIndex: 10 },
+  header: { position: 'absolute', top: 40, width: '100%', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, zIndex: 100 },
   btn: { backgroundColor: 'rgba(0,0,0,0.6)', padding: 10, borderRadius: 12 },
   blueText: { color: '#4dabf7', fontWeight: 'bold' },
   whiteText: { color: 'white', fontWeight: 'bold' },
-  footer: { position: 'absolute', bottom: 40, left: 20, right: 20, zIndex: 10, alignItems: 'flex-start' },
-  shareBtn: { backgroundColor: 'rgba(255,255,255,0.9)', padding: 12, borderRadius: 20, paddingHorizontal: 20 },
-  shareBtnText: { color: 'black', fontWeight: 'bold' },
-  infoPanel: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'white', padding: 25, borderTopLeftRadius: 25, borderTopRightRadius: 25 },
+  footer: { position: 'absolute', bottom: 50, left: 20, zIndex: 100 },
+  shareBtn: { backgroundColor: '#ffffff', paddingVertical: 12, paddingHorizontal: 25, borderRadius: 25, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5 },
+  shareBtnText: { color: '#000000', fontWeight: 'bold', fontSize: 16 },
+  infoPanel: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'white', padding: 25, borderTopLeftRadius: 25, borderTopRightRadius: 25, zIndex: 200 },
   infoTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10 },
   infoText: { fontSize: 13, marginBottom: 6, color: '#333' },
   bold: { fontWeight: 'bold' },
-  closeInfo: { marginTop: 15, backgroundColor: '#1A73E8', padding: 12, borderRadius: 12, alignItems: 'center' }
+  closeInfo: { marginTop: 15, backgroundColor: '#000', padding: 12, borderRadius: 12, alignItems: 'center' }
 });
