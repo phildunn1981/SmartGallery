@@ -1,23 +1,17 @@
 {
   "expo": {
-    "name": "Gallery Pro",
-    "slug": "gallery-pro",
+    "name": "My Gallery App",
+    "slug": "my-gallery-app",
     "version": "1.0.0",
     "orientation": "default",
     "icon": "./icon.png",
     "userInterfaceStyle": "dark",
-    "plugins": [
-      "expo-image-picker",
-      "expo-screen-orientation",
-      "expo-navigation-bar"
-    ],
     "android": {
-      "package": "com.yourname.gallerypro",
-      "permissions": ["READ_EXTERNAL_STORAGE"],
       "adaptiveIcon": {
         "foregroundImage": "./icon.png",
-        "backgroundColor": "#000000"
-      }
+        "backgroundColor": "#121212"
+      },
+      "package": "com.yourname.galleryapp"
     }
   }
 }
