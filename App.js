@@ -30,7 +30,7 @@ export default function App() {
           await NavigationBar.setBackgroundColorAsync('#ffffff');
           await NavigationBar.setButtonStyleAsync('dark');
         }
-        // Explicitly request Media Library permissions for "Full Access"
+        // Requesting Full Access to Media Library
         await MediaLibrary.requestPermissionsAsync();
       } catch (e) { console.log("Init Error:", e); }
     }
@@ -40,30 +40,38 @@ export default function App() {
   const fetchRealDetails = async (assetId, fallbackUri) => {
     setIsLoadingInfo(true);
     try {
-      // Step 1: Query the phone's media database using the specific Asset ID
-      const assetInfo = await MediaLibrary.getAssetInfoAsync(assetId);
-      
+      // Deep Discovery Logic
+      let assetInfo = null;
+      if (assetId) {
+        assetInfo = await MediaLibrary.getAssetInfoAsync(assetId);
+      }
+
+      // If the path looks like a 'Cache' path, try to find the real asset in the library
+      if (!assetInfo || assetInfo.localUri?.includes('ImagePicker')) {
+        const assets = await MediaLibrary.getAssetsAsync({ first: 50, mediaType: 'photo' });
+        const realAsset = assets.assets.find(a => a.id === assetId || fallbackUri.includes(a.filename));
+        if (realAsset) {
+          assetInfo = await MediaLibrary.getAssetInfoAsync(realAsset.id);
+        }
+      }
+
       Image.getSize(fallbackUri, (width, height) => {
         const mp = ((width * height) / 1000000).toFixed(1);
         
-        // Step 2: Extract original metadata
         setImageDetails({
-          name: assetInfo.filename || fallbackUri.split('/').pop(),
-          path: assetInfo.localUri || assetInfo.uri || "Internal Storage Path",
+          // Real Filename from MediaStore
+          name: assetInfo?.filename || fallbackUri.split('/').pop(),
+          // Real Local Storage Path
+          path: assetInfo?.localUri || assetInfo?.uri || "System Protected Path",
           resolution: `${width} * ${height} (${mp}MP)`,
-          // Pulling original modification or creation time
-          modified: new Date(assetInfo.modificationTime || assetInfo.creationTime || Date.now()).toLocaleString('en-GB')
+          // Actual Original Date
+          modified: assetInfo?.modificationTime 
+            ? new Date(assetInfo.modificationTime).toLocaleString('en-GB') 
+            : new Date().toLocaleString('en-GB')
         });
       });
     } catch (e) {
-      console.log("Metadata Fetch Error:", e);
-      // Fallback if the asset is not found in the local database (e.g. cloud only)
-      setImageDetails({
-        name: fallbackUri.split('/').pop(),
-        path: "System Protected / Cloud Path",
-        resolution: "Detecting...",
-        modified: "Check Gallery App"
-      });
+      console.log("Metadata Error:", e);
     } finally {
       setIsLoadingInfo(false);
     }
@@ -74,7 +82,7 @@ export default function App() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
       quality: 1,
-      exif: true, // Critical for capturing asset metadata
+      exif: true,
     });
 
     if (!result.canceled && result.assets) {
@@ -85,7 +93,6 @@ export default function App() {
       setImages(formatted);
       setCurrentIndex(0);
       setRotation(0);
-      // Fetch details for the first selected image
       if (result.assets[0].assetId) {
         fetchRealDetails(result.assets[0].assetId, result.assets[0].uri);
       }
@@ -106,7 +113,7 @@ export default function App() {
       <ImageBackground source={BG_IMAGE} style={styles.background} resizeMode="cover">
         <View style={styles.overlay}>
           <TouchableOpacity activeOpacity={0.8} style={styles.glassBtn} onPress={pickImages}>
-            <Text style={styles.glassBtnText}>+ Select Images</Text>
+            <Text style={styles.glassBtnText}>+ Open Gallery</Text>
           </TouchableOpacity>
         </View>
       </ImageBackground>
@@ -119,7 +126,7 @@ export default function App() {
             onSwipeDown={() => setIsViewerVisible(false)}
             enableSwipeDown={true}
             onClick={toggleControls}
-            renderIndicator={() => null} // Hides the duplicate page counter
+            renderIndicator={() => null}
             onChange={(idx) => {
               setCurrentIndex(idx);
               setRotation(0);
@@ -134,15 +141,15 @@ export default function App() {
             renderHeader={() => (
               showControls && (
                 <SafeAreaView style={styles.header}>
-                  <TouchableOpacity style={styles.btn} onPress={() => setIsViewerVisible(false)}>
+                  <TouchableOpacity style={styles.topBtn} onPress={() => setIsViewerVisible(false)}>
                     <Text style={styles.blueText}>✕ Close</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.btn} onPress={() => setShowInfo(!showInfo)}>
+                  <TouchableOpacity style={styles.topBtn} onPress={() => setShowInfo(!showInfo)}>
                     <Text style={styles.whiteText}>
                       {currentIndex + 1}/{images.length} {isLoadingInfo ? '⌛' : 'ⓘ Info'}
                     </Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.btn} onPress={() => setRotation(r => (r + 90) % 360)}>
+                  <TouchableOpacity style={styles.topBtn} onPress={() => setRotation(r => (r + 90) % 360)}>
                     <Text style={styles.blueText}>⟳ Rotate</Text>
                   </TouchableOpacity>
                 </SafeAreaView>
@@ -152,11 +159,9 @@ export default function App() {
               showControls && (
                 <View style={styles.footer}>
                   <TouchableOpacity style={styles.shareBtn} onPress={async () => {
-                    if (await Sharing.isAvailableAsync()) {
-                        await Sharing.shareAsync(images[currentIndex].url);
-                    }
+                    if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(images[currentIndex].url);
                   }}>
-                    <Text style={styles.shareBtnText}>📤 Share Image</Text>
+                    <Text style={styles.shareText}>📤 Share Image</Text>
                   </TouchableOpacity>
                 </View>
               )
@@ -164,17 +169,17 @@ export default function App() {
           />
 
           {showInfo && imageDetails && (
-            <View style={styles.infoPanel}>
-              <Text style={styles.infoTitle}>Original File Details</Text>
-              <View style={styles.divider} />
+            <View style={styles.infoSheet}>
+              <Text style={styles.infoTitle}>Media Metadata</Text>
+              <View style={styles.line} />
               
-              <Text style={styles.infoText}><Text style={styles.bold}>Real Name:</Text> {imageDetails.name}</Text>
-              <Text style={styles.infoText}><Text style={styles.bold}>Real Path:</Text> {imageDetails.path}</Text>
-              <Text style={styles.infoText}><Text style={styles.bold}>Resolution:</Text> {imageDetails.resolution}</Text>
-              <Text style={styles.infoText}><Text style={styles.bold}>Date Taken:</Text> {imageDetails.modified}</Text>
+              <Text style={styles.detail}><Text style={styles.bold}>File Name:</Text> {imageDetails.name}</Text>
+              <Text style={styles.detail}><Text style={styles.bold}>Storage Path:</Text> {imageDetails.path}</Text>
+              <Text style={styles.detail}><Text style={styles.bold}>Resolution:</Text> {imageDetails.resolution}</Text>
+              <Text style={styles.detail}><Text style={styles.bold}>Date Taken:</Text> {imageDetails.modified}</Text>
               
-              <TouchableOpacity style={styles.closeInfo} onPress={() => setShowInfo(false)}>
-                <Text style={styles.whiteText}>Hide Details</Text>
+              <TouchableOpacity style={styles.hideBtn} onPress={() => setShowInfo(false)}>
+                <Text style={styles.whiteText}>Close Details</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -188,19 +193,19 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   background: { flex: 1 },
   overlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.2)' },
-  glassBtn: { backgroundColor: 'rgba(255,255,255,0.4)', paddingVertical: 18, paddingHorizontal: 35, borderRadius: 30, borderWidth: 1.5, borderColor: 'white' },
-  glassBtnText: { color: '#003366', fontWeight: 'bold', fontSize: 20 },
-  header: { position: 'absolute', top: 40, width: '100%', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, zIndex: 100 },
-  btn: { backgroundColor: 'rgba(0,0,0,0.7)', paddingVertical: 8, paddingHorizontal: 15, borderRadius: 20 },
-  blueText: { color: '#4dabf7', fontWeight: 'bold' },
+  glassBtn: { backgroundColor: 'rgba(255,255,255,0.4)', paddingVertical: 15, paddingHorizontal: 30, borderRadius: 30, borderWidth: 1, borderColor: 'white' },
+  glassBtnText: { color: '#002855', fontWeight: 'bold', fontSize: 18 },
+  header: { position: 'absolute', top: 45, width: '100%', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 15, zIndex: 100 },
+  topBtn: { backgroundColor: 'rgba(0,0,0,0.7)', paddingVertical: 10, paddingHorizontal: 15, borderRadius: 25 },
+  blueText: { color: '#339af0', fontWeight: 'bold' },
   whiteText: { color: 'white', fontWeight: 'bold' },
-  footer: { position: 'absolute', bottom: 50, left: 20, zIndex: 100 },
-  shareBtn: { backgroundColor: '#ffffff', paddingVertical: 12, paddingHorizontal: 25, borderRadius: 25, elevation: 5 },
-  shareBtnText: { color: '#000', fontWeight: 'bold' },
-  infoPanel: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'white', padding: 30, borderTopLeftRadius: 30, borderTopRightRadius: 30, zIndex: 200 },
-  infoTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 5, color: '#222' },
-  divider: { height: 1, backgroundColor: '#eee', marginBottom: 15 },
-  infoText: { fontSize: 13, marginBottom: 8, color: '#444', lineHeight: 18 },
+  footer: { position: 'absolute', bottom: 50, width: '100%', alignItems: 'center', zIndex: 100 },
+  shareBtn: { backgroundColor: 'white', paddingVertical: 12, paddingHorizontal: 30, borderRadius: 25, elevation: 10 },
+  shareText: { color: 'black', fontWeight: 'bold' },
+  infoSheet: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'white', padding: 25, borderTopLeftRadius: 25, borderTopRightRadius: 25, zIndex: 200 },
+  infoTitle: { fontSize: 18, fontWeight: 'bold', color: '#111' },
+  line: { height: 1, backgroundColor: '#eee', marginVertical: 12 },
+  detail: { fontSize: 13, marginBottom: 8, color: '#333', lineHeight: 18 },
   bold: { fontWeight: 'bold', color: '#000' },
-  closeInfo: { marginTop: 20, backgroundColor: '#1A73E8', padding: 15, borderRadius: 15, alignItems: 'center' }
+  hideBtn: { marginTop: 15, backgroundColor: '#222', padding: 15, borderRadius: 15, alignItems: 'center' }
 });
