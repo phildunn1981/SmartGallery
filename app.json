@@ -1,22 +1,37 @@
 {
   "expo": {
-    "name": "My Gallery App",
-    "slug": "my-gallery-app",
+    "name": "Smart Gallery",
+    "slug": "smart-gallery",
     "version": "1.0.0",
-    "orientation": "default",
-    "icon": "./icon.png",
-    "userInterfaceStyle": "dark",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
     "splash": {
-      "image": "./icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#121212"
+      "image": "./assets/fuji.jpg",
+      "resizeMode": "cover",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.yourname.smartgallery",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photos to display them in the gallery and show image details."
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./icon.png",
-        "backgroundColor": "#121212"
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#ffffff"
       },
-      "package": "com.yourname.galleryapp"
+      "package": "com.yourname.smartgallery",
+      "permissions": [
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "MEDIA_CONTENT_CONTROL"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/icon.png"
     }
   }
 }
