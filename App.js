@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, View, TouchableOpacity, Text, Modal, 
-  StatusBar, Platform, SafeAreaView, Image, ImageBackground, ActivityIndicator
+  StatusBar, Platform, SafeAreaView, Image, ImageBackground, ActivityIndicator 
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
@@ -30,42 +30,40 @@ export default function App() {
           await NavigationBar.setBackgroundColorAsync('#ffffff');
           await NavigationBar.setButtonStyleAsync('dark');
         }
-        const { status } = await MediaLibrary.requestPermissionsAsync();
-        if (status !== 'granted') {
-          alert('Full access to photos is required for real file info.');
-        }
-      } catch (e) { console.log(e); }
+        // Explicitly request Media Library permissions for "Full Access"
+        await MediaLibrary.requestPermissionsAsync();
+      } catch (e) { console.log("Init Error:", e); }
     }
     init();
   }, []);
 
   const fetchRealDetails = async (assetId, fallbackUri) => {
-    if (!assetId) {
-      // If no assetId (limited access/cloud photo), use basic info
-      const name = fallbackUri.split('/').pop();
-      setImageDetails({
-        name: name,
-        path: "Limited Access Path",
-        resolution: "Detecting...",
-        modified: "Original Date Hidden"
-      });
-      return;
-    }
-
     setIsLoadingInfo(true);
     try {
+      // Step 1: Query the phone's media database using the specific Asset ID
       const assetInfo = await MediaLibrary.getAssetInfoAsync(assetId);
+      
       Image.getSize(fallbackUri, (width, height) => {
         const mp = ((width * height) / 1000000).toFixed(1);
+        
+        // Step 2: Extract original metadata
         setImageDetails({
-          name: assetInfo.filename || "Unknown",
-          path: assetInfo.localUri || assetInfo.uri || "Internal Storage",
+          name: assetInfo.filename || fallbackUri.split('/').pop(),
+          path: assetInfo.localUri || assetInfo.uri || "Internal Storage Path",
           resolution: `${width} * ${height} (${mp}MP)`,
-          modified: new Date(assetInfo.modificationTime || assetInfo.creationTime).toLocaleString('en-GB')
+          // Pulling original modification or creation time
+          modified: new Date(assetInfo.modificationTime || assetInfo.creationTime || Date.now()).toLocaleString('en-GB')
         });
       });
     } catch (e) {
-      console.log("Details Error:", e);
+      console.log("Metadata Fetch Error:", e);
+      // Fallback if the asset is not found in the local database (e.g. cloud only)
+      setImageDetails({
+        name: fallbackUri.split('/').pop(),
+        path: "System Protected / Cloud Path",
+        resolution: "Detecting...",
+        modified: "Check Gallery App"
+      });
     } finally {
       setIsLoadingInfo(false);
     }
@@ -76,6 +74,7 @@ export default function App() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
       quality: 1,
+      exif: true, // Critical for capturing asset metadata
     });
 
     if (!result.canceled && result.assets) {
@@ -86,7 +85,10 @@ export default function App() {
       setImages(formatted);
       setCurrentIndex(0);
       setRotation(0);
-      fetchRealDetails(result.assets[0].assetId, result.assets[0].uri);
+      // Fetch details for the first selected image
+      if (result.assets[0].assetId) {
+        fetchRealDetails(result.assets[0].assetId, result.assets[0].uri);
+      }
       setIsViewerVisible(true);
       setShowControls(true);
     }
@@ -100,9 +102,10 @@ export default function App() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent={true} />
+      
       <ImageBackground source={BG_IMAGE} style={styles.background} resizeMode="cover">
         <View style={styles.overlay}>
-          <TouchableOpacity style={styles.glassBtn} onPress={pickImages}>
+          <TouchableOpacity activeOpacity={0.8} style={styles.glassBtn} onPress={pickImages}>
             <Text style={styles.glassBtnText}>+ Select Images</Text>
           </TouchableOpacity>
         </View>
@@ -116,14 +119,17 @@ export default function App() {
             onSwipeDown={() => setIsViewerVisible(false)}
             enableSwipeDown={true}
             onClick={toggleControls}
-            renderIndicator={() => null}
+            renderIndicator={() => null} // Hides the duplicate page counter
             onChange={(idx) => {
               setCurrentIndex(idx);
               setRotation(0);
               fetchRealDetails(images[idx].assetId, images[idx].url);
             }}
             renderImage={(props) => (
-              <Image {...props} style={[props.style, { transform: [{ rotate: `${rotation}deg` }] }]} />
+              <Image 
+                {...props} 
+                style={[props.style, { transform: [{ rotate: `${rotation}deg` }] }]} 
+              />
             )}
             renderHeader={() => (
               showControls && (
@@ -146,7 +152,9 @@ export default function App() {
               showControls && (
                 <View style={styles.footer}>
                   <TouchableOpacity style={styles.shareBtn} onPress={async () => {
-                    if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(images[currentIndex].url);
+                    if (await Sharing.isAvailableAsync()) {
+                        await Sharing.shareAsync(images[currentIndex].url);
+                    }
                   }}>
                     <Text style={styles.shareBtnText}>📤 Share Image</Text>
                   </TouchableOpacity>
@@ -158,10 +166,13 @@ export default function App() {
           {showInfo && imageDetails && (
             <View style={styles.infoPanel}>
               <Text style={styles.infoTitle}>Original File Details</Text>
+              <View style={styles.divider} />
+              
               <Text style={styles.infoText}><Text style={styles.bold}>Real Name:</Text> {imageDetails.name}</Text>
               <Text style={styles.infoText}><Text style={styles.bold}>Real Path:</Text> {imageDetails.path}</Text>
               <Text style={styles.infoText}><Text style={styles.bold}>Resolution:</Text> {imageDetails.resolution}</Text>
               <Text style={styles.infoText}><Text style={styles.bold}>Date Taken:</Text> {imageDetails.modified}</Text>
+              
               <TouchableOpacity style={styles.closeInfo} onPress={() => setShowInfo(false)}>
                 <Text style={styles.whiteText}>Hide Details</Text>
               </TouchableOpacity>
@@ -176,19 +187,20 @@ export default function App() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   background: { flex: 1 },
-  overlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.1)' },
-  glassBtn: { backgroundColor: 'rgba(255,255,255,0.4)', padding: 20, borderRadius: 20, borderWidth: 1, borderColor: 'white' },
-  glassBtnText: { color: '#003366', fontWeight: 'bold', fontSize: 18 },
+  overlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.2)' },
+  glassBtn: { backgroundColor: 'rgba(255,255,255,0.4)', paddingVertical: 18, paddingHorizontal: 35, borderRadius: 30, borderWidth: 1.5, borderColor: 'white' },
+  glassBtnText: { color: '#003366', fontWeight: 'bold', fontSize: 20 },
   header: { position: 'absolute', top: 40, width: '100%', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, zIndex: 100 },
-  btn: { backgroundColor: 'rgba(0,0,0,0.6)', padding: 10, borderRadius: 12 },
+  btn: { backgroundColor: 'rgba(0,0,0,0.7)', paddingVertical: 8, paddingHorizontal: 15, borderRadius: 20 },
   blueText: { color: '#4dabf7', fontWeight: 'bold' },
   whiteText: { color: 'white', fontWeight: 'bold' },
   footer: { position: 'absolute', bottom: 50, left: 20, zIndex: 100 },
-  shareBtn: { backgroundColor: '#ffffff', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 25 },
+  shareBtn: { backgroundColor: '#ffffff', paddingVertical: 12, paddingHorizontal: 25, borderRadius: 25, elevation: 5 },
   shareBtnText: { color: '#000', fontWeight: 'bold' },
-  infoPanel: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'white', padding: 25, borderTopLeftRadius: 25, borderTopRightRadius: 25, zIndex: 200 },
-  infoTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10 },
-  infoText: { fontSize: 12, marginBottom: 6, color: '#333' },
-  bold: { fontWeight: 'bold' },
-  closeInfo: { marginTop: 15, backgroundColor: '#000', padding: 12, borderRadius: 12, alignItems: 'center' }
+  infoPanel: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'white', padding: 30, borderTopLeftRadius: 30, borderTopRightRadius: 30, zIndex: 200 },
+  infoTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 5, color: '#222' },
+  divider: { height: 1, backgroundColor: '#eee', marginBottom: 15 },
+  infoText: { fontSize: 13, marginBottom: 8, color: '#444', lineHeight: 18 },
+  bold: { fontWeight: 'bold', color: '#000' },
+  closeInfo: { marginTop: 20, backgroundColor: '#1A73E8', padding: 15, borderRadius: 15, alignItems: 'center' }
 });
