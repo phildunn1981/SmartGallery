@@ -1,17 +1,13 @@
 {
   "expo": {
-    "name": "My Gallery App",
-    "slug": "my-gallery-app",
+    "name": "Horizontal Gallery",
+    "slug": "horizontal-gallery",
     "version": "1.0.0",
     "orientation": "default",
     "icon": "./icon.png",
     "android": {
-      "package": "com.simple.horizgallery",
-      "adaptiveIcon": {
-        "foregroundImage": "./icon.png",
-        "backgroundColor": "#000000"
-      },
-      "permissions": ["READ_EXTERNAL_STORAGE"]
+      "package": "com.yourname.horizontalgallery",
+      "adaptiveIcon": { "foregroundImage": "./icon.png", "backgroundColor": "#000000" }
     }
   }
 }
