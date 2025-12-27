@@ -17,7 +17,6 @@ export default function App() {
       try {
         await ScreenOrientation.unlockAsync(); 
         if (Platform.OS === 'android') {
-          // Changed to 'black' to ensure a safe area for the button
           await NavigationBar.setBackgroundColorAsync('#000000');
           await NavigationBar.setButtonStyleAsync('light');
         }
@@ -27,7 +26,7 @@ export default function App() {
   }, []);
 
   const pickImages = async () => {
-    // FIX 1: Close viewer before picking to prevent the "Black Screen" crash
+    // We reset visibility so the viewer component remounts with new data
     setIsViewerVisible(false);
 
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -40,8 +39,8 @@ export default function App() {
       const formatted = result.assets.map(asset => ({ url: asset.uri }));
       setImages(formatted);
       setRotation(0); 
-      // Small delay ensures the viewer restarts fresh with new data
-      setTimeout(() => setIsViewerVisible(true), 150); 
+      // SPEED FIX: Reduced delay to 10ms for near-instant transition
+      setTimeout(() => setIsViewerVisible(true), 10); 
     }
   };
 
@@ -65,7 +64,12 @@ export default function App() {
         </TouchableOpacity>
       </View>
 
-      <Modal visible={isViewerVisible} transparent={false} onRequestClose={() => setIsViewerVisible(false)}>
+      <Modal 
+        visible={isViewerVisible} 
+        transparent={false} 
+        animationType="none" // SPEED FIX: Instant appearance without sliding/fading
+        onRequestClose={() => setIsViewerVisible(false)}
+      >
         <View style={{ flex: 1, backgroundColor: 'black' }}>
           <ImageViewer 
             imageUrls={images} 
@@ -127,15 +131,12 @@ const styles = StyleSheet.create({
   headerContainer: { position: 'absolute', top: 40, left: 0, right: 0, zIndex: 100, flexDirection: 'row', justifyContent: 'space-evenly', paddingHorizontal: 10 },
   headerBtn: { backgroundColor: 'rgba(0,0,0,0.6)', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12 },
   headerBtnText: { color: 'white', fontWeight: 'bold', fontSize: 13 },
-  
-  // FIX 2: Wrapped in SafeAreaView and increased bottom margin to clear the Android Nav Bar
   footerFix: { 
     position: 'absolute', 
     bottom: Platform.OS === 'android' ? 100 : 80, 
     left: 20, 
     zIndex: 999 
   },
-  
   minimalShareBtn: { 
     backgroundColor: 'rgba(255, 255, 255, 0.15)', 
     paddingVertical: 12, 
