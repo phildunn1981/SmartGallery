@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, View, TouchableOpacity, Text, Modal, 
-  StatusBar, Platform, SafeAreaView, Image, ImageBackground 
+  StatusBar, Platform, SafeAreaView, Image, ImageBackground, ActivityIndicator
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
@@ -20,38 +20,54 @@ export default function App() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showInfo, setShowInfo] = useState(false);
   const [imageDetails, setImageDetails] = useState(null);
+  const [isLoadingInfo, setIsLoadingInfo] = useState(false);
 
   useEffect(() => {
     async function init() {
-      await ScreenOrientation.unlockAsync();
-      if (Platform.OS === 'android') {
-        await NavigationBar.setBackgroundColorAsync('#ffffff');
-        await NavigationBar.setButtonStyleAsync('dark');
-      }
-      // Requesting the "Full Access" permission on startup
-      await MediaLibrary.requestPermissionsAsync();
+      try {
+        await ScreenOrientation.unlockAsync();
+        if (Platform.OS === 'android') {
+          await NavigationBar.setBackgroundColorAsync('#ffffff');
+          await NavigationBar.setButtonStyleAsync('dark');
+        }
+        const { status } = await MediaLibrary.requestPermissionsAsync();
+        if (status !== 'granted') {
+          alert('Full access to photos is required for real file info.');
+        }
+      } catch (e) { console.log(e); }
     }
     init();
   }, []);
 
   const fetchRealDetails = async (assetId, fallbackUri) => {
+    if (!assetId) {
+      // If no assetId (limited access/cloud photo), use basic info
+      const name = fallbackUri.split('/').pop();
+      setImageDetails({
+        name: name,
+        path: "Limited Access Path",
+        resolution: "Detecting...",
+        modified: "Original Date Hidden"
+      });
+      return;
+    }
+
+    setIsLoadingInfo(true);
     try {
-      // Accessing the REAL file data from the phone's database
       const assetInfo = await MediaLibrary.getAssetInfoAsync(assetId);
-      
       Image.getSize(fallbackUri, (width, height) => {
         const mp = ((width * height) / 1000000).toFixed(1);
-        
         setImageDetails({
-          name: assetInfo.filename, // REAL FILENAME (e.g., IMG_1234.jpg)
-          path: assetInfo.localUri || assetInfo.uri, // REAL STORAGE PATH
+          name: assetInfo.filename || "Unknown",
+          path: assetInfo.localUri || assetInfo.uri || "Internal Storage",
           resolution: `${width} * ${height} (${mp}MP)`,
-          // REAL MODIFIED DATE from the original file metadata
-          modified: new Date(assetInfo.modificationTime || assetInfo.creationTime).toLocaleString('en-GB') 
+          modified: new Date(assetInfo.modificationTime || assetInfo.creationTime).toLocaleString('en-GB')
         });
       });
     } catch (e) {
-      console.log("Error fetching real metadata:", e);
+      console.log("Details Error:", e);
+    } finally {
+      setIsLoadingInfo(false);
     }
   };
 
@@ -69,6 +85,7 @@ export default function App() {
       }));
       setImages(formatted);
       setCurrentIndex(0);
+      setRotation(0);
       fetchRealDetails(result.assets[0].assetId, result.assets[0].uri);
       setIsViewerVisible(true);
       setShowControls(true);
@@ -115,7 +132,9 @@ export default function App() {
                     <Text style={styles.blueText}>✕ Close</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.btn} onPress={() => setShowInfo(!showInfo)}>
-                    <Text style={styles.whiteText}>{currentIndex + 1}/{images.length} ⓘ Info</Text>
+                    <Text style={styles.whiteText}>
+                      {currentIndex + 1}/{images.length} {isLoadingInfo ? '⌛' : 'ⓘ Info'}
+                    </Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.btn} onPress={() => setRotation(r => (r + 90) % 360)}>
                     <Text style={styles.blueText}>⟳ Rotate</Text>
@@ -167,7 +186,7 @@ const styles = StyleSheet.create({
   footer: { position: 'absolute', bottom: 50, left: 20, zIndex: 100 },
   shareBtn: { backgroundColor: '#ffffff', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 25 },
   shareBtnText: { color: '#000', fontWeight: 'bold' },
-  infoPanel: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'white', padding: 25, borderTopLeftRadius: 25, borderTopRightRadius: 25 },
+  infoPanel: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'white', padding: 25, borderTopLeftRadius: 25, borderTopRightRadius: 25, zIndex: 200 },
   infoTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10 },
   infoText: { fontSize: 12, marginBottom: 6, color: '#333' },
   bold: { fontWeight: 'bold' },
