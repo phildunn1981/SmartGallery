@@ -3,13 +3,25 @@
     "name": "Smart Gallery",
     "slug": "smart-gallery",
     "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/fuji.jpg",
+      "resizeMode": "cover",
+      "backgroundColor": "#ffffff"
+    },
     "android": {
-      "package": "com.yourname.smartgallery",
+      "package": "com.phildunn1981.smartgallery",
       "permissions": [
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
         "READ_MEDIA_IMAGES"
-      ]
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#ffffff"
+      }
     }
   }
 }
