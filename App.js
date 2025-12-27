@@ -11,7 +11,7 @@ export default function App() {
   const [isViewerVisible, setIsViewerVisible] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [rotation, setRotation] = useState(0); 
-  const [viewerKey, setViewerKey] = useState(0); // FIX: Prevents black screen
+  const [viewerKey, setViewerKey] = useState(0); 
 
   useEffect(() => {
     async function init() {
@@ -21,15 +21,13 @@ export default function App() {
           await NavigationBar.setBackgroundColorAsync('#000000');
           await NavigationBar.setButtonStyleAsync('light');
         }
-      } catch (e) {}
+      } catch (e) { console.error(e); }
     }
     init();
   }, []);
 
   const pickImages = async () => {
-    // Close viewer first to reset state
-    setIsViewerVisible(false);
-    
+    setIsViewerVisible(false); // Close viewer to clear memory
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
@@ -40,8 +38,8 @@ export default function App() {
       const formatted = result.assets.map(asset => ({ url: asset.uri }));
       setImages(formatted);
       setRotation(0);
-      setViewerKey(k => k + 1); // Increment key to force fresh render
-      setTimeout(() => setIsViewerVisible(true), 250); 
+      setViewerKey(k => k + 1); // Refresh the component to fix black screen
+      setTimeout(() => setIsViewerVisible(true), 200); 
     }
   };
 
@@ -51,7 +49,7 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000000" translucent={false} />
+      <StatusBar barStyle="light-content" backgroundColor="#000000" />
       
       <View style={styles.center}>
         <TouchableOpacity style={styles.startBtn} onPress={pickImages}>
@@ -108,29 +106,29 @@ export default function App() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#121212' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  startBtn: { backgroundColor: '#007AFF', paddingVertical: 18, paddingHorizontal: 40, borderRadius: 30 },
-  startBtnText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
+  startBtn: { backgroundColor: '#007AFF', paddingVertical: 20, paddingHorizontal: 50, borderRadius: 35 },
+  startBtnText: { color: 'white', fontWeight: 'bold', fontSize: 18 },
 
   headerContainer: { position: 'absolute', top: 50, left: 0, right: 0, zIndex: 100, flexDirection: 'row', justifyContent: 'space-evenly' },
-  headerBtn: { backgroundColor: 'rgba(0,0,0,0.7)', paddingVertical: 10, paddingHorizontal: 15, borderRadius: 12 },
+  headerBtn: { backgroundColor: 'rgba(0,0,0,0.8)', paddingVertical: 12, paddingHorizontal: 18, borderRadius: 15 },
   headerBtnText: { color: 'white', fontWeight: 'bold', fontSize: 12 },
 
   footerFix: { 
     position: 'absolute', 
-    bottom: 110, // FIX: Moves button safely above Android navigation bar
+    bottom: 120, // INCREASED: Keeps button above Android's navigation bar
     left: 20, 
     zIndex: 999 
   },
   minimalShareBtn: { 
-    backgroundColor: 'rgba(255, 255, 255, 0.12)', 
-    height: 48, // FIX: Ensures horizontal shape
-    paddingHorizontal: 25, 
-    borderRadius: 24, 
-    borderWidth: 1, 
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)', 
+    height: 50, 
+    paddingHorizontal: 30, 
+    borderRadius: 25, 
+    borderWidth: 1.2, 
+    borderColor: 'rgba(255, 255, 255, 0.4)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center'
   },
-  minimalShareText: { color: 'white', fontWeight: 'bold', fontSize: 14, flexWrap: 'nowrap' }
+  minimalShareText: { color: 'white', fontWeight: 'bold', fontSize: 15, flexWrap: 'nowrap' }
 });
