@@ -6,13 +6,18 @@
     "orientation": "default",
     "icon": "./icon.png",
     "userInterfaceStyle": "dark",
+    "plugins": [
+      "expo-image-picker",
+      "expo-screen-orientation",
+      "expo-navigation-bar"
+    ],
     "android": {
-      "package": "com.yourname.horizontalshare",
+      "package": "com.yourname.gallerypro",
+      "permissions": ["READ_EXTERNAL_STORAGE"],
       "adaptiveIcon": {
         "foregroundImage": "./icon.png",
         "backgroundColor": "#000000"
-      },
-      "permissions": ["READ_EXTERNAL_STORAGE"]
+      }
     }
   }
 }
