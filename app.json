@@ -6,6 +6,11 @@
     "orientation": "default",
     "icon": "./icon.png",
     "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#121212"
+    },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./icon.png",
