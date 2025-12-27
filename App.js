@@ -11,25 +11,21 @@ export default function App() {
   const [isViewerVisible, setIsViewerVisible] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [rotation, setRotation] = useState(0); 
+  const [viewerKey, setViewerKey] = useState(0); // Forces fresh render to fix black screen
 
   useEffect(() => {
-    async function initSettings() {
-      try {
-        await ScreenOrientation.unlockAsync(); 
-        if (Platform.OS === 'android') {
-          // Changed to 'black' to ensure a safe area for the button
-          await NavigationBar.setBackgroundColorAsync('#000000');
-          await NavigationBar.setButtonStyleAsync('light');
-        }
-      } catch (e) { console.log("Orientation error:", e); }
+    async function init() {
+      await ScreenOrientation.unlockAsync(); 
+      if (Platform.OS === 'android') {
+        await NavigationBar.setBackgroundColorAsync('#000000');
+        await NavigationBar.setButtonStyleAsync('light');
+      }
     }
-    initSettings();
+    init();
   }, []);
 
   const pickImages = async () => {
-    // FIX 1: Close viewer before picking to prevent the "Black Screen" crash
-    setIsViewerVisible(false);
-
+    setIsViewerVisible(false); // Close first
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
@@ -39,26 +35,19 @@ export default function App() {
     if (!result.canceled && result.assets) {
       const formatted = result.assets.map(asset => ({ url: asset.uri }));
       setImages(formatted);
-      setRotation(0); 
-      // Small delay ensures the viewer restarts fresh with new data
-      setTimeout(() => setIsViewerVisible(true), 150); 
+      setRotation(0);
+      setViewerKey(prev => prev + 1); // Update key to reset viewer component
+      setTimeout(() => setIsViewerVisible(true), 200); 
     }
-  };
-
-  const handleManualRotate = () => {
-    setRotation((prev) => (prev + 90) % 360); 
   };
 
   const handleShare = async (uri) => {
-    if (uri) {
-      await Sharing.shareAsync(uri);
-    }
+    if (uri) await Sharing.shareAsync(uri);
   };
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" translucent={false} />
-      
       <View style={styles.center}>
         <TouchableOpacity style={styles.startBtn} onPress={pickImages}>
           <Text style={styles.startBtnText}>+ Select Images</Text>
@@ -68,48 +57,34 @@ export default function App() {
       <Modal visible={isViewerVisible} transparent={false} onRequestClose={() => setIsViewerVisible(false)}>
         <View style={{ flex: 1, backgroundColor: 'black' }}>
           <ImageViewer 
+            key={viewerKey}
             imageUrls={images} 
             onSwipeDown={() => setIsViewerVisible(false)}
             enableSwipeDown={true}
             onClick={() => setShowControls(!showControls)}
             renderImage={(props) => (
               <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <Image 
-                  source={{ uri: props.source.uri }} 
-                  style={{ 
-                    width: '100%', 
-                    height: '100%', 
-                    transform: [{ rotate: `${rotation}deg` }] 
-                  }} 
-                  resizeMode="contain"
-                />
+                <Image source={{ uri: props.source.uri }} 
+                  style={{ width: '100%', height: '100%', transform: [{ rotate: `${rotation}deg` }] }} 
+                  resizeMode="contain" />
               </View>
             )}
             renderHeader={() => (
               showControls && (
                 <SafeAreaView style={styles.headerContainer}>
-                  <TouchableOpacity style={styles.headerBtn} onPress={() => setIsViewerVisible(false)}>
-                    <Text style={styles.headerBtnText}>✕ Back</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.headerBtn} onPress={handleManualRotate}>
-                    <Text style={styles.headerBtnText}>⟳ Rotate</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.headerBtn} onPress={pickImages}>
-                    <Text style={styles.headerBtnText}>🔄 Pick New</Text>
-                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.headerBtn} onPress={() => setIsViewerVisible(false)}><Text style={styles.headerBtnText}>✕ Back</Text></TouchableOpacity>
+                  <TouchableOpacity style={styles.headerBtn} onPress={() => setRotation(r => (r+90)%360)}><Text style={styles.headerBtnText}>⟳ Rotate</Text></TouchableOpacity>
+                  <TouchableOpacity style={styles.headerBtn} onPress={pickImages}><Text style={styles.headerBtnText}>🔄 Pick New</Text></TouchableOpacity>
                 </SafeAreaView>
               )
             )}
             renderFooter={(index) => (
               showControls && (
-                <SafeAreaView style={styles.footerFix}>
-                   <TouchableOpacity 
-                    style={styles.minimalShareBtn} 
-                    onPress={() => handleShare(images[index].url)}
-                  >
+                <View style={styles.footerFix}>
+                   <TouchableOpacity style={styles.minimalShareBtn} onPress={() => handleShare(images[index].url)}>
                     <Text numberOfLines={1} style={styles.minimalShareText}>📤 Share This One</Text>
                   </TouchableOpacity>
-                </SafeAreaView>
+                </View>
               )
             )}
           />
@@ -122,29 +97,25 @@ export default function App() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#121212' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  startBtn: { backgroundColor: '#007AFF', paddingVertical: 18, paddingHorizontal: 45, borderRadius: 30 },
-  startBtnText: { color: 'white', fontWeight: 'bold', fontSize: 18 },
-  headerContainer: { position: 'absolute', top: 40, left: 0, right: 0, zIndex: 100, flexDirection: 'row', justifyContent: 'space-evenly', paddingHorizontal: 10 },
-  headerBtn: { backgroundColor: 'rgba(0,0,0,0.6)', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12 },
-  headerBtnText: { color: 'white', fontWeight: 'bold', fontSize: 13 },
-  
-  // FIX 2: Wrapped in SafeAreaView and increased bottom margin to clear the Android Nav Bar
+  startBtn: { backgroundColor: '#007AFF', padding: 18, borderRadius: 30 },
+  startBtnText: { color: 'white', fontWeight: 'bold' },
+  headerContainer: { position: 'absolute', top: 50, left: 0, right: 0, zIndex: 100, flexDirection: 'row', justifyContent: 'space-evenly' },
+  headerBtn: { backgroundColor: 'rgba(0,0,0,0.7)', padding: 10, borderRadius: 12 },
+  headerBtnText: { color: 'white', fontSize: 13 },
   footerFix: { 
     position: 'absolute', 
-    bottom: Platform.OS === 'android' ? 100 : 80, 
-    left: 20, 
+    bottom: 110, // Higher bottom to avoid Android buttons
+    left: 25, 
     zIndex: 999 
   },
-  
   minimalShareBtn: { 
     backgroundColor: 'rgba(255, 255, 255, 0.15)', 
     paddingVertical: 12, 
-    paddingHorizontal: 22, 
+    paddingHorizontal: 25, 
     borderRadius: 25, 
     borderWidth: 1, 
-    borderColor: 'rgba(255, 255, 255, 0.3)', 
-    flexDirection: 'row', 
-    alignItems: 'center' 
+    borderColor: 'rgba(255,255,255,0.3)',
+    flexDirection: 'row'
   },
-  minimalShareText: { color: 'white', fontWeight: 'bold', fontSize: 14 }
+  minimalShareText: { color: 'white', fontWeight: 'bold' }
 });
