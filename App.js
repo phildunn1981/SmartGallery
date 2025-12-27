@@ -6,7 +6,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import * as Sharing from 'expo-sharing'; 
 import ImageViewer from 'react-native-image-zoom-viewer';
-import * as FileSystem from 'expo-file-system'; 
+import * as FileSystem from 'expo-file-system';
 import * as NavigationBar from 'expo-navigation-bar';
 import * as ScreenOrientation from 'expo-screen-orientation';
 
@@ -15,8 +15,6 @@ const BG_IMAGE = require('./assets/fuji.jpg');
 export default function App() {
   const [images, setImages] = useState([]); 
   const [isViewerVisible, setIsViewerVisible] = useState(false);
-  const [showControls, setShowControls] = useState(true);
-  const [rotation, setRotation] = useState(0); 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showInfo, setShowInfo] = useState(false);
   const [imageDetails, setImageDetails] = useState(null);
@@ -29,7 +27,7 @@ export default function App() {
           await NavigationBar.setBackgroundColorAsync('#ffffff');
           await NavigationBar.setButtonStyleAsync('dark');
         }
-      } catch (e) { console.log("Init error:", e); }
+      } catch (e) { console.log(e); }
     }
     initSettings();
   }, []);
@@ -37,11 +35,9 @@ export default function App() {
   const fetchImageDetails = async (uri) => {
     try {
       const fileInfo = await FileSystem.getInfoAsync(uri);
-      // Calculating Resolution and Megapixels
       Image.getSize(uri, (width, height) => {
         const name = uri.split('/').pop();
         const megapixels = ((width * height) / 1000000).toFixed(1);
-        
         setImageDetails({
           name: name,
           size: fileInfo.size > 1024 * 1024 
@@ -52,7 +48,7 @@ export default function App() {
           modified: new Date(fileInfo.modificationTime * 1000).toLocaleString('en-GB')
         });
       });
-    } catch (e) { console.log("Info error:", e); }
+    } catch (e) { console.log(e); }
   };
 
   const pickImages = async () => {
@@ -65,7 +61,6 @@ export default function App() {
     if (!result.canceled && result.assets) {
       const formatted = result.assets.map(asset => ({ url: asset.uri }));
       setImages(formatted);
-      setRotation(0); 
       setCurrentIndex(0);
       fetchImageDetails(result.assets[0].uri);
       setIsViewerVisible(true);
@@ -82,10 +77,9 @@ export default function App() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent={true} />
-      
       <ImageBackground source={BG_IMAGE} style={styles.background} resizeMode="cover">
         <View style={styles.overlay}>
-          <TouchableOpacity activeOpacity={0.7} style={styles.glassBtn} onPress={pickImages}>
+          <TouchableOpacity style={styles.glassBtn} onPress={pickImages}>
             <Text style={styles.glassBtnText}>+ Select Images</Text>
           </TouchableOpacity>
         </View>
@@ -98,10 +92,7 @@ export default function App() {
             index={currentIndex}
             onSwipeDown={() => setIsViewerVisible(false)}
             enableSwipeDown={true}
-            onChange={(idx) => {
-              setCurrentIndex(idx);
-              fetchImageDetails(images[idx].url);
-            }}
+            onChange={(idx) => { setCurrentIndex(idx); fetchImageDetails(images[idx].url); }}
             renderHeader={() => (
               <SafeAreaView style={styles.header}>
                 <TouchableOpacity style={styles.btn} onPress={() => setIsViewerVisible(false)}>
@@ -110,29 +101,30 @@ export default function App() {
                 <TouchableOpacity style={styles.btn} onPress={() => setShowInfo(!showInfo)}>
                   <Text style={styles.whiteText}>{currentIndex + 1}/{images.length} ⓘ Info</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.btn} onPress={() => setRotation((r) => (r + 90) % 360)}>
+                <TouchableOpacity style={styles.btn} onPress={() => {/* Rotate logic if needed */}}>
                   <Text style={styles.blueText}>⟳ Rotate</Text>
                 </TouchableOpacity>
               </SafeAreaView>
             )}
             renderFooter={() => (
-              <SafeAreaView style={styles.footer}>
+              <View style={styles.footer}>
                 <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
-                  <Text style={styles.shareBtnText}>📤 Share Image</Text>
+                  <Text style={styles.shareBtnText}>📤 Share</Text>
                 </TouchableOpacity>
-              </SafeAreaView>
+              </View>
             )}
           />
 
           {showInfo && imageDetails && (
             <View style={styles.infoPanel}>
+              <Text style={styles.infoTitle}>Detailed Info</Text>
               <Text style={styles.infoText}><Text style={styles.bold}>Name:</Text> {imageDetails.name}</Text>
               <Text style={styles.infoText}><Text style={styles.bold}>Size:</Text> {imageDetails.size}</Text>
               <Text style={styles.infoText}><Text style={styles.bold}>Path:</Text> {imageDetails.path}</Text>
               <Text style={styles.infoText}><Text style={styles.bold}>Resolution:</Text> {imageDetails.resolution}</Text>
-              <Text style={styles.infoText}><Text style={styles.bold}>Last Modified:</Text> {imageDetails.modified}</Text>
+              <Text style={styles.infoText}><Text style={styles.bold}>Modified:</Text> {imageDetails.modified}</Text>
               <TouchableOpacity style={styles.closeInfo} onPress={() => setShowInfo(false)}>
-                <Text style={styles.whiteText}>Hide Info</Text>
+                <Text style={styles.whiteText}>Hide Details</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -152,11 +144,12 @@ const styles = StyleSheet.create({
   btn: { backgroundColor: 'rgba(0,0,0,0.6)', padding: 10, borderRadius: 12 },
   blueText: { color: '#4dabf7', fontWeight: 'bold' },
   whiteText: { color: 'white', fontWeight: 'bold' },
-  footer: { position: 'absolute', bottom: 50, left: 20, zIndex: 10 },
-  shareBtn: { backgroundColor: 'white', padding: 12, borderRadius: 25, paddingHorizontal: 20 },
+  footer: { position: 'absolute', bottom: 40, left: 20, right: 20, zIndex: 10, alignItems: 'flex-start' },
+  shareBtn: { backgroundColor: 'rgba(255,255,255,0.9)', padding: 12, borderRadius: 20, paddingHorizontal: 20 },
   shareBtnText: { color: 'black', fontWeight: 'bold' },
-  infoPanel: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'rgba(255,255,255,0.95)', padding: 25, borderTopLeftRadius: 20, borderTopRightRadius: 20 },
-  infoText: { fontSize: 13, marginBottom: 5, color: '#333' },
+  infoPanel: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'white', padding: 25, borderTopLeftRadius: 25, borderTopRightRadius: 25 },
+  infoTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10 },
+  infoText: { fontSize: 13, marginBottom: 6, color: '#333' },
   bold: { fontWeight: 'bold' },
-  closeInfo: { marginTop: 15, backgroundColor: '#000', padding: 12, borderRadius: 10, alignItems: 'center' }
+  closeInfo: { marginTop: 15, backgroundColor: '#1A73E8', padding: 12, borderRadius: 12, alignItems: 'center' }
 });
