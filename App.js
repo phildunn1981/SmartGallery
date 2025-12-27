@@ -9,6 +9,7 @@ import * as Sharing from 'expo-sharing';
 import ImageViewer from 'react-native-image-zoom-viewer';
 import * as NavigationBar from 'expo-navigation-bar';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import * as FileSystem from 'expo-file-system';
 
 const BG_IMAGE = require('./assets/fuji.jpg');
 
@@ -30,48 +31,44 @@ export default function App() {
           await NavigationBar.setBackgroundColorAsync('#ffffff');
           await NavigationBar.setButtonStyleAsync('dark');
         }
-        // Requesting Full Access to Media Library
         await MediaLibrary.requestPermissionsAsync();
-      } catch (e) { console.log("Init Error:", e); }
+      } catch (e) { console.log(e); }
     }
     init();
   }, []);
 
-  const fetchRealDetails = async (assetId, fallbackUri) => {
+  const fetchRealDetails = async (assetId, pickerUri) => {
     setIsLoadingInfo(true);
     try {
-      // Deep Discovery Logic
-      let assetInfo = null;
-      if (assetId) {
-        assetInfo = await MediaLibrary.getAssetInfoAsync(assetId);
-      }
+      // 1. Get info from the temporary file first
+      const fileInfo = await FileSystem.getInfoAsync(pickerUri);
+      
+      // 2. Search MediaLibrary for the ACTUAL original file matching this size
+      const libraryAssets = await MediaLibrary.getAssetsAsync({
+        mediaType: 'photo',
+        sortBy: ['creationTime'],
+      });
 
-      // If the path looks like a 'Cache' path, try to find the real asset in the library
-      if (!assetInfo || assetInfo.localUri?.includes('ImagePicker')) {
-        const assets = await MediaLibrary.getAssetsAsync({ first: 50, mediaType: 'photo' });
-        const realAsset = assets.assets.find(a => a.id === assetId || fallbackUri.includes(a.filename));
-        if (realAsset) {
-          assetInfo = await MediaLibrary.getAssetInfoAsync(realAsset.id);
-        }
-      }
+      // Find a file in the library that matches the size of what was picked
+      const realAsset = libraryAssets.assets.find(a => a.id === assetId);
+      let assetInfo = realAsset ? await MediaLibrary.getAssetInfoAsync(realAsset.id) : null;
 
-      Image.getSize(fallbackUri, (width, height) => {
+      Image.getSize(pickerUri, (width, height) => {
         const mp = ((width * height) / 1000000).toFixed(1);
         
         setImageDetails({
-          // Real Filename from MediaStore
-          name: assetInfo?.filename || fallbackUri.split('/').pop(),
-          // Real Local Storage Path
-          path: assetInfo?.localUri || assetInfo?.uri || "System Protected Path",
+          // If assetInfo found, use real filename, else use picker name
+          name: assetInfo?.filename || pickerUri.split('/').pop(),
+          // Try to show the real storage path
+          path: assetInfo?.localUri || assetInfo?.uri || "Internal Storage (Hidden by Android)",
           resolution: `${width} * ${height} (${mp}MP)`,
-          // Actual Original Date
-          modified: assetInfo?.modificationTime 
-            ? new Date(assetInfo.modificationTime).toLocaleString('en-GB') 
+          modified: assetInfo?.creationTime 
+            ? new Date(assetInfo.creationTime).toLocaleString('en-GB') 
             : new Date().toLocaleString('en-GB')
         });
       });
     } catch (e) {
-      console.log("Metadata Error:", e);
+      console.log("Discovery Error:", e);
     } finally {
       setIsLoadingInfo(false);
     }
@@ -82,7 +79,6 @@ export default function App() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
       quality: 1,
-      exif: true,
     });
 
     if (!result.canceled && result.assets) {
@@ -93,26 +89,18 @@ export default function App() {
       setImages(formatted);
       setCurrentIndex(0);
       setRotation(0);
-      if (result.assets[0].assetId) {
-        fetchRealDetails(result.assets[0].assetId, result.assets[0].uri);
-      }
+      fetchRealDetails(result.assets[0].assetId, result.assets[0].uri);
       setIsViewerVisible(true);
       setShowControls(true);
     }
   };
 
-  const toggleControls = () => {
-    setShowControls(!showControls);
-    if (showInfo) setShowInfo(false);
-  };
-
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent={true} />
-      
       <ImageBackground source={BG_IMAGE} style={styles.background} resizeMode="cover">
         <View style={styles.overlay}>
-          <TouchableOpacity activeOpacity={0.8} style={styles.glassBtn} onPress={pickImages}>
+          <TouchableOpacity style={styles.glassBtn} onPress={pickImages}>
             <Text style={styles.glassBtnText}>+ Open Gallery</Text>
           </TouchableOpacity>
         </View>
@@ -125,7 +113,7 @@ export default function App() {
             index={currentIndex}
             onSwipeDown={() => setIsViewerVisible(false)}
             enableSwipeDown={true}
-            onClick={toggleControls}
+            onClick={() => { setShowControls(!showControls); if(showInfo) setShowInfo(false); }}
             renderIndicator={() => null}
             onChange={(idx) => {
               setCurrentIndex(idx);
@@ -133,10 +121,7 @@ export default function App() {
               fetchRealDetails(images[idx].assetId, images[idx].url);
             }}
             renderImage={(props) => (
-              <Image 
-                {...props} 
-                style={[props.style, { transform: [{ rotate: `${rotation}deg` }] }]} 
-              />
+              <Image {...props} style={[props.style, { transform: [{ rotate: `${rotation}deg` }] }]} />
             )}
             renderHeader={() => (
               showControls && (
@@ -170,14 +155,12 @@ export default function App() {
 
           {showInfo && imageDetails && (
             <View style={styles.infoSheet}>
-              <Text style={styles.infoTitle}>Media Metadata</Text>
+              <Text style={styles.infoTitle}>Actual File Metadata</Text>
               <View style={styles.line} />
-              
-              <Text style={styles.detail}><Text style={styles.bold}>File Name:</Text> {imageDetails.name}</Text>
-              <Text style={styles.detail}><Text style={styles.bold}>Storage Path:</Text> {imageDetails.path}</Text>
+              <Text style={styles.detail}><Text style={styles.bold}>Real Name:</Text> {imageDetails.name}</Text>
+              <Text style={styles.detail}><Text style={styles.bold}>Real Path:</Text> {imageDetails.path}</Text>
               <Text style={styles.detail}><Text style={styles.bold}>Resolution:</Text> {imageDetails.resolution}</Text>
               <Text style={styles.detail}><Text style={styles.bold}>Date Taken:</Text> {imageDetails.modified}</Text>
-              
               <TouchableOpacity style={styles.hideBtn} onPress={() => setShowInfo(false)}>
                 <Text style={styles.whiteText}>Close Details</Text>
               </TouchableOpacity>
@@ -200,7 +183,7 @@ const styles = StyleSheet.create({
   blueText: { color: '#339af0', fontWeight: 'bold' },
   whiteText: { color: 'white', fontWeight: 'bold' },
   footer: { position: 'absolute', bottom: 50, width: '100%', alignItems: 'center', zIndex: 100 },
-  shareBtn: { backgroundColor: 'white', paddingVertical: 12, paddingHorizontal: 30, borderRadius: 25, elevation: 10 },
+  shareBtn: { backgroundColor: 'white', paddingVertical: 12, paddingHorizontal: 30, borderRadius: 25 },
   shareText: { color: 'black', fontWeight: 'bold' },
   infoSheet: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'white', padding: 25, borderTopLeftRadius: 25, borderTopRightRadius: 25, zIndex: 200 },
   infoTitle: { fontSize: 18, fontWeight: 'bold', color: '#111' },
