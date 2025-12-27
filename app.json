@@ -5,13 +5,13 @@
     "version": "1.0.0",
     "orientation": "default",
     "icon": "./icon.png",
-    "userInterfaceStyle": "dark",
     "android": {
+      "package": "com.simple.horizgallery",
       "adaptiveIcon": {
         "foregroundImage": "./icon.png",
-        "backgroundColor": "#121212"
+        "backgroundColor": "#000000"
       },
-      "package": "com.yourname.galleryapp"
+      "permissions": ["READ_EXTERNAL_STORAGE"]
     }
   }
 }
