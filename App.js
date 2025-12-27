@@ -4,9 +4,9 @@ import {
   StatusBar, Platform, SafeAreaView, Image, ImageBackground 
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing'; 
 import ImageViewer from 'react-native-image-zoom-viewer';
-import * as FileSystem from 'expo-file-system';
 import * as NavigationBar from 'expo-navigation-bar';
 import * as ScreenOrientation from 'expo-screen-orientation';
 
@@ -22,35 +22,37 @@ export default function App() {
   const [imageDetails, setImageDetails] = useState(null);
 
   useEffect(() => {
-    async function initSettings() {
-      try {
-        await ScreenOrientation.unlockAsync(); 
-        if (Platform.OS === 'android') {
-          await NavigationBar.setBackgroundColorAsync('#ffffff');
-          await NavigationBar.setButtonStyleAsync('dark');
-        }
-      } catch (e) { console.log(e); }
+    async function init() {
+      await ScreenOrientation.unlockAsync();
+      if (Platform.OS === 'android') {
+        await NavigationBar.setBackgroundColorAsync('#ffffff');
+        await NavigationBar.setButtonStyleAsync('dark');
+      }
+      // Requesting the "Full Access" permission on startup
+      await MediaLibrary.requestPermissionsAsync();
     }
-    initSettings();
+    init();
   }, []);
 
-  const fetchImageDetails = async (uri) => {
+  const fetchRealDetails = async (assetId, fallbackUri) => {
     try {
-      const fileInfo = await FileSystem.getInfoAsync(uri);
-      Image.getSize(uri, (width, height) => {
-        const name = uri.split('/').pop();
-        const megapixels = ((width * height) / 1000000).toFixed(1);
+      // Accessing the REAL file data from the phone's database
+      const assetInfo = await MediaLibrary.getAssetInfoAsync(assetId);
+      
+      Image.getSize(fallbackUri, (width, height) => {
+        const mp = ((width * height) / 1000000).toFixed(1);
+        
         setImageDetails({
-          name: name,
-          size: fileInfo.size > 1024 * 1024 
-            ? `${(fileInfo.size / (1024 * 1024)).toFixed(2)} MB` 
-            : `${(fileInfo.size / 1024).toFixed(0)} KB`,
-          path: uri,
-          resolution: `${width} * ${height} (${megapixels}MP)`,
-          modified: new Date(fileInfo.modificationTime * 1000).toLocaleString('en-GB')
+          name: assetInfo.filename, // REAL FILENAME (e.g., IMG_1234.jpg)
+          path: assetInfo.localUri || assetInfo.uri, // REAL STORAGE PATH
+          resolution: `${width} * ${height} (${mp}MP)`,
+          // REAL MODIFIED DATE from the original file metadata
+          modified: new Date(assetInfo.modificationTime || assetInfo.creationTime).toLocaleString('en-GB') 
         });
       });
-    } catch (e) { console.log(e); }
+    } catch (e) {
+      console.log("Error fetching real metadata:", e);
+    }
   };
 
   const pickImages = async () => {
@@ -61,20 +63,15 @@ export default function App() {
     });
 
     if (!result.canceled && result.assets) {
-      const formatted = result.assets.map(asset => ({ url: asset.uri }));
+      const formatted = result.assets.map(asset => ({ 
+        url: asset.uri, 
+        assetId: asset.assetId 
+      }));
       setImages(formatted);
-      setRotation(0); 
       setCurrentIndex(0);
-      fetchImageDetails(result.assets[0].uri);
+      fetchRealDetails(result.assets[0].assetId, result.assets[0].uri);
       setIsViewerVisible(true);
       setShowControls(true);
-    }
-  };
-
-  const handleShare = async () => {
-    const currentUri = images[currentIndex]?.url;
-    if (currentUri && await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(currentUri);
     }
   };
 
@@ -102,13 +99,14 @@ export default function App() {
             onSwipeDown={() => setIsViewerVisible(false)}
             enableSwipeDown={true}
             onClick={toggleControls}
-            renderIndicator={() => null} // Removes the extra page number text
-            onChange={(idx) => { setCurrentIndex(idx); setRotation(0); fetchImageDetails(images[idx].url); }}
+            renderIndicator={() => null}
+            onChange={(idx) => {
+              setCurrentIndex(idx);
+              setRotation(0);
+              fetchRealDetails(images[idx].assetId, images[idx].url);
+            }}
             renderImage={(props) => (
-              <Image 
-                {...props} 
-                style={[props.style, { transform: [{ rotate: `${rotation}deg` }] }]} 
-              />
+              <Image {...props} style={[props.style, { transform: [{ rotate: `${rotation}deg` }] }]} />
             )}
             renderHeader={() => (
               showControls && (
@@ -119,7 +117,7 @@ export default function App() {
                   <TouchableOpacity style={styles.btn} onPress={() => setShowInfo(!showInfo)}>
                     <Text style={styles.whiteText}>{currentIndex + 1}/{images.length} ⓘ Info</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.btn} onPress={() => setRotation((r) => (r + 90) % 360)}>
+                  <TouchableOpacity style={styles.btn} onPress={() => setRotation(r => (r + 90) % 360)}>
                     <Text style={styles.blueText}>⟳ Rotate</Text>
                   </TouchableOpacity>
                 </SafeAreaView>
@@ -128,7 +126,9 @@ export default function App() {
             renderFooter={() => (
               showControls && (
                 <View style={styles.footer}>
-                  <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
+                  <TouchableOpacity style={styles.shareBtn} onPress={async () => {
+                    if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(images[currentIndex].url);
+                  }}>
                     <Text style={styles.shareBtnText}>📤 Share Image</Text>
                   </TouchableOpacity>
                 </View>
@@ -138,12 +138,11 @@ export default function App() {
 
           {showInfo && imageDetails && (
             <View style={styles.infoPanel}>
-              <Text style={styles.infoTitle}>Detailed Info</Text>
-              <Text style={styles.infoText}><Text style={styles.bold}>Name:</Text> {imageDetails.name}</Text>
-              <Text style={styles.infoText}><Text style={styles.bold}>Size:</Text> {imageDetails.size}</Text>
-              <Text style={styles.infoText}><Text style={styles.bold}>Path:</Text> {imageDetails.path}</Text>
+              <Text style={styles.infoTitle}>Original File Details</Text>
+              <Text style={styles.infoText}><Text style={styles.bold}>Real Name:</Text> {imageDetails.name}</Text>
+              <Text style={styles.infoText}><Text style={styles.bold}>Real Path:</Text> {imageDetails.path}</Text>
               <Text style={styles.infoText}><Text style={styles.bold}>Resolution:</Text> {imageDetails.resolution}</Text>
-              <Text style={styles.infoText}><Text style={styles.bold}>Modified:</Text> {imageDetails.modified}</Text>
+              <Text style={styles.infoText}><Text style={styles.bold}>Date Taken:</Text> {imageDetails.modified}</Text>
               <TouchableOpacity style={styles.closeInfo} onPress={() => setShowInfo(false)}>
                 <Text style={styles.whiteText}>Hide Details</Text>
               </TouchableOpacity>
@@ -166,11 +165,11 @@ const styles = StyleSheet.create({
   blueText: { color: '#4dabf7', fontWeight: 'bold' },
   whiteText: { color: 'white', fontWeight: 'bold' },
   footer: { position: 'absolute', bottom: 50, left: 20, zIndex: 100 },
-  shareBtn: { backgroundColor: '#ffffff', paddingVertical: 12, paddingHorizontal: 25, borderRadius: 25, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5 },
-  shareBtnText: { color: '#000000', fontWeight: 'bold', fontSize: 16 },
-  infoPanel: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'white', padding: 25, borderTopLeftRadius: 25, borderTopRightRadius: 25, zIndex: 200 },
+  shareBtn: { backgroundColor: '#ffffff', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 25 },
+  shareBtnText: { color: '#000', fontWeight: 'bold' },
+  infoPanel: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'white', padding: 25, borderTopLeftRadius: 25, borderTopRightRadius: 25 },
   infoTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10 },
-  infoText: { fontSize: 13, marginBottom: 6, color: '#333' },
+  infoText: { fontSize: 12, marginBottom: 6, color: '#333' },
   bold: { fontWeight: 'bold' },
   closeInfo: { marginTop: 15, backgroundColor: '#000', padding: 12, borderRadius: 12, alignItems: 'center' }
 });
