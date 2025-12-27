@@ -14,20 +14,20 @@ export default function App() {
   const [viewerKey, setViewerKey] = useState(0); 
 
   useEffect(() => {
-    async function init() {
+    const init = async () => {
       try {
         await ScreenOrientation.unlockAsync(); 
         if (Platform.OS === 'android') {
           await NavigationBar.setBackgroundColorAsync('#000000');
           await NavigationBar.setButtonStyleAsync('light');
         }
-      } catch (e) { console.error(e); }
-    }
+      } catch (e) { /* Non-critical error */ }
+    };
     init();
   }, []);
 
   const pickImages = async () => {
-    setIsViewerVisible(false); // Close viewer to clear memory
+    setIsViewerVisible(false);
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
@@ -38,26 +38,25 @@ export default function App() {
       const formatted = result.assets.map(asset => ({ url: asset.uri }));
       setImages(formatted);
       setRotation(0);
-      setViewerKey(k => k + 1); // Refresh the component to fix black screen
+      setViewerKey(k => k + 1); // Refresh viewer to prevent black screen
       setTimeout(() => setIsViewerVisible(true), 200); 
     }
   };
 
-  const handleShare = async (uri) => {
-    if (uri) await Sharing.shareAsync(uri);
+  const handleShare = (uri) => {
+    if (uri) Sharing.shareAsync(uri);
   };
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      
       <View style={styles.center}>
         <TouchableOpacity style={styles.startBtn} onPress={pickImages}>
           <Text style={styles.startBtnText}>+ Select Images</Text>
         </TouchableOpacity>
       </View>
 
-      <Modal visible={isViewerVisible} transparent={false} animationType="fade">
+      <Modal visible={isViewerVisible} transparent={false}>
         <View style={{ flex: 1, backgroundColor: 'black' }}>
           <ImageViewer 
             key={viewerKey}
@@ -72,29 +71,19 @@ export default function App() {
                   resizeMode="contain" />
               </View>
             )}
-            renderHeader={() => (
-              showControls && (
-                <SafeAreaView style={styles.headerContainer}>
-                  <TouchableOpacity style={styles.headerBtn} onPress={() => setIsViewerVisible(false)}>
-                    <Text style={styles.headerBtnText}>✕ Back</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.headerBtn} onPress={() => setRotation(r => (r+90)%360)}>
-                    <Text style={styles.headerBtnText}>⟳ Rotate</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.headerBtn} onPress={pickImages}>
-                    <Text style={styles.headerBtnText}>🔄 Pick New</Text>
-                  </TouchableOpacity>
-                </SafeAreaView>
-              )
+            renderHeader={() => showControls && (
+              <SafeAreaView style={styles.headerContainer}>
+                <TouchableOpacity style={styles.headerBtn} onPress={() => setIsViewerVisible(false)}><Text style={styles.headerBtnText}>✕ Back</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.headerBtn} onPress={() => setRotation(r => (r+90)%360)}><Text style={styles.headerBtnText}>⟳ Rotate</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.headerBtn} onPress={pickImages}><Text style={styles.headerBtnText}>🔄 New</Text></TouchableOpacity>
+              </SafeAreaView>
             )}
-            renderFooter={(index) => (
-              showControls && (
-                <View style={styles.footerFix}>
-                   <TouchableOpacity style={styles.minimalShareBtn} onPress={() => handleShare(images[index].url)}>
-                    <Text numberOfLines={1} style={styles.minimalShareText}>📤 Share This One</Text>
-                  </TouchableOpacity>
-                </View>
-              )
+            renderFooter={(index) => showControls && (
+              <View style={styles.footerFix}>
+                <TouchableOpacity style={styles.minimalShareBtn} onPress={() => handleShare(images[index].url)}>
+                  <Text numberOfLines={1} style={styles.minimalShareText}>📤 Share This One</Text>
+                </TouchableOpacity>
+              </View>
             )}
           />
         </View>
@@ -106,29 +95,12 @@ export default function App() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#121212' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  startBtn: { backgroundColor: '#007AFF', paddingVertical: 20, paddingHorizontal: 50, borderRadius: 35 },
-  startBtnText: { color: 'white', fontWeight: 'bold', fontSize: 18 },
-
+  startBtn: { backgroundColor: '#007AFF', paddingVertical: 18, paddingHorizontal: 45, borderRadius: 30 },
+  startBtnText: { color: 'white', fontWeight: 'bold' },
   headerContainer: { position: 'absolute', top: 50, left: 0, right: 0, zIndex: 100, flexDirection: 'row', justifyContent: 'space-evenly' },
-  headerBtn: { backgroundColor: 'rgba(0,0,0,0.8)', paddingVertical: 12, paddingHorizontal: 18, borderRadius: 15 },
-  headerBtnText: { color: 'white', fontWeight: 'bold', fontSize: 12 },
-
-  footerFix: { 
-    position: 'absolute', 
-    bottom: 120, // INCREASED: Keeps button above Android's navigation bar
-    left: 20, 
-    zIndex: 999 
-  },
-  minimalShareBtn: { 
-    backgroundColor: 'rgba(255, 255, 255, 0.15)', 
-    height: 50, 
-    paddingHorizontal: 30, 
-    borderRadius: 25, 
-    borderWidth: 1.2, 
-    borderColor: 'rgba(255, 255, 255, 0.4)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  minimalShareText: { color: 'white', fontWeight: 'bold', fontSize: 15, flexWrap: 'nowrap' }
+  headerBtn: { backgroundColor: 'rgba(0,0,0,0.7)', padding: 12, borderRadius: 12 },
+  headerBtnText: { color: 'white', fontSize: 13, fontWeight: 'bold' },
+  footerFix: { position: 'absolute', bottom: 120, left: 25, zIndex: 999 },
+  minimalShareBtn: { backgroundColor: 'rgba(255, 255, 255, 0.15)', height: 50, paddingHorizontal: 25, borderRadius: 25, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.3)', justifyContent: 'center' },
+  minimalShareText: { color: 'white', fontWeight: 'bold' }
 });
