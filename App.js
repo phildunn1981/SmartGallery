@@ -21,22 +21,17 @@ export default function App() {
   const [showInfo, setShowInfo] = useState(false);
   const [imageDetails, setImageDetails] = useState({ size: '...', resolution: '...' });
 
-  // Handle Hardware Back Button
+  // Handle Android Back Button
   useEffect(() => {
     const backAction = () => {
       if (isViewerVisible) {
         setIsViewerVisible(false);
         setShowInfo(false);
-        return true; // Prevents the app from closing
+        return true;
       }
-      return false; // Closes the app if on home screen
+      return false;
     };
-
-    const backHandler = BackHandler.addEventListener(
-      "hardwareBackPress",
-      backAction
-    );
-
+    const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
     return () => backHandler.remove();
   }, [isViewerVisible]);
 
@@ -56,17 +51,11 @@ export default function App() {
     try {
       const fileInfo = await FileSystem.getInfoAsync(uri);
       const sizeMB = (fileInfo.size / (1024 * 1024)).toFixed(2);
-      
       Image.getSize(uri, (width, height) => {
         const mp = ((width * height) / 1000000).toFixed(1);
-        setImageDetails({
-          size: `${sizeMB} MB`,
-          resolution: `${width} × ${height} (${mp}MP)`
-        });
+        setImageDetails({ size: `${sizeMB} MB`, resolution: `${width} × ${height} (${mp}MP)` });
       });
-    } catch (e) {
-      console.log("Error getting details:", e);
-    }
+    } catch (e) { console.log(e); }
   };
 
   const pickImages = async () => {
@@ -75,8 +64,7 @@ export default function App() {
       allowsMultipleSelection: true,
       quality: 1,
     });
-
-    if (!result.canceled && result.assets && result.assets.length > 0) {
+    if (!result.canceled && result.assets) {
       const formatted = result.assets.map(asset => ({ url: asset.uri }));
       setImages(formatted);
       setCurrentIndex(0);
@@ -84,6 +72,14 @@ export default function App() {
       setShowInfo(false);
       await getBasicDetails(result.assets[0].uri);
       setIsViewerVisible(true);
+    }
+  };
+
+  // Shared function for Lens and General Sharing
+  const handleShare = async () => {
+    const currentImage = images[currentIndex].url;
+    if (await Sharing.isAvailableAsync()) {
+      await Sharing.shareAsync(currentImage);
     }
   };
 
@@ -98,22 +94,14 @@ export default function App() {
         </View>
       </ImageBackground>
 
-      <Modal 
-        visible={isViewerVisible} 
-        transparent={false} 
-        animationType="fade"
-        onRequestClose={() => setIsViewerVisible(false)} // Secondary fix for Android Back button
-      >
+      <Modal visible={isViewerVisible} transparent={false} animationType="fade" onRequestClose={() => setIsViewerVisible(false)}>
         <View style={{ flex: 1, backgroundColor: 'black' }}>
           <ImageViewer 
             imageUrls={images} 
             index={currentIndex}
             onSwipeDown={() => setIsViewerVisible(false)}
             enableSwipeDown
-            onClick={() => { 
-              setShowControls(!showControls); 
-              if (showInfo) setShowInfo(false); 
-            }}
+            onClick={() => { setShowControls(!showControls); if (showInfo) setShowInfo(false); }}
             renderIndicator={() => null}
             onChange={(idx) => {
               setCurrentIndex(idx);
@@ -140,24 +128,28 @@ export default function App() {
             )}
           />
 
+          {/* MAIN SHARE BUTTON (For WhatsApp, Lens, Facebook, etc.) */}
           {showControls && !showInfo && (
             <View style={styles.footerContainer}>
-              <TouchableOpacity 
-                activeOpacity={0.8}
-                style={styles.shareBtn} 
-                onPress={() => Sharing.shareAsync(images[currentIndex].url)}
-              >
-                <Text style={styles.shareText}>📤 Share Image</Text>
+              <TouchableOpacity activeOpacity={0.8} style={styles.shareBtn} onPress={handleShare}>
+                <Text style={styles.shareText}>📤 Share / Search Image</Text>
               </TouchableOpacity>
             </View>
           )}
 
+          {/* INFO PANEL */}
           {showInfo && (
             <View style={styles.infoSheet}>
               <Text style={styles.infoTitle}>Image Properties</Text>
               <View style={styles.line} />
               <Text style={styles.detail}><Text style={styles.bold}>Resolution:</Text> {imageDetails.resolution}</Text>
               <Text style={styles.detail}><Text style={styles.bold}>File Size:</Text> {imageDetails.size}</Text>
+              
+              {/* GOOGLE LENS SHORTCUT */}
+              <TouchableOpacity style={styles.lensBtn} onPress={handleShare}>
+                <Text style={styles.lensBtnText}>🔍 Search with Google Lens</Text>
+              </TouchableOpacity>
+
               <TouchableOpacity style={styles.hideBtn} onPress={() => setShowInfo(false)}>
                 <Text style={styles.whiteText}>Hide Info</Text>
               </TouchableOpacity>
@@ -180,12 +172,14 @@ const styles = StyleSheet.create({
   blueText: { color: '#339af0', fontWeight: 'bold' },
   whiteText: { color: 'white', fontWeight: 'bold' },
   footerContainer: { position: 'absolute', bottom: 70, width: '100%', alignItems: 'center', zIndex: 100 },
-  shareBtn: { backgroundColor: 'white', paddingVertical: 14, paddingHorizontal: 45, borderRadius: 30, elevation: 8 },
+  shareBtn: { backgroundColor: 'white', paddingVertical: 14, paddingHorizontal: 40, borderRadius: 30, elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84 },
   shareText: { color: 'black', fontWeight: 'bold', fontSize: 16 },
   infoSheet: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'white', padding: 30, borderTopLeftRadius: 30, borderTopRightRadius: 30, zIndex: 200 },
   infoTitle: { fontSize: 18, fontWeight: 'bold', color: '#111' },
   line: { height: 1, backgroundColor: '#eee', marginVertical: 15 },
   detail: { fontSize: 15, marginBottom: 10, color: '#333' },
   bold: { fontWeight: 'bold', color: '#000' },
-  hideBtn: { marginTop: 10, backgroundColor: '#222', padding: 15, borderRadius: 15, alignItems: 'center' }
+  lensBtn: { backgroundColor: '#4285F4', padding: 15, borderRadius: 15, alignItems: 'center', marginBottom: 10 },
+  lensBtnText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
+  hideBtn: { backgroundColor: '#222', padding: 15, borderRadius: 15, alignItems: 'center' }
 });
