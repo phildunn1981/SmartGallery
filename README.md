@@ -1,0 +1,1 @@
+A high-performance, minimalist image viewer built with React Native and Expo. This app is designed for users who want a lightweight alternative to heavy gallery apps, featuring precise metadata detection and seamless system integration.
