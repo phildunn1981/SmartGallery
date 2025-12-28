@@ -33,6 +33,7 @@ export default function App() {
   }, []);
 
   const getBasicDetails = async (uri) => {
+    if (!uri) return;
     try {
       const fileInfo = await FileSystem.getInfoAsync(uri);
       const sizeMB = (fileInfo.size / (1024 * 1024)).toFixed(2);
@@ -45,7 +46,7 @@ export default function App() {
         });
       });
     } catch (e) {
-      console.log(e);
+      console.log("Error getting details:", e);
     }
   };
 
@@ -56,12 +57,18 @@ export default function App() {
       quality: 1,
     });
 
-    if (!result.canceled && result.assets) {
+    if (!result.canceled && result.assets && result.assets.length > 0) {
       const formatted = result.assets.map(asset => ({ url: asset.uri }));
+      
+      // FIX: Reset index and fetch details for the FIRST image immediately
       setImages(formatted);
       setCurrentIndex(0);
       setRotation(0);
-      getBasicDetails(result.assets[0].url);
+      setShowInfo(false);
+      
+      // Explicitly call details for the first asset
+      await getBasicDetails(result.assets[0].uri);
+      
       setIsViewerVisible(true);
     }
   };
@@ -71,7 +78,7 @@ export default function App() {
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       <ImageBackground source={BG_IMAGE} style={styles.background} resizeMode="cover">
         <View style={styles.overlay}>
-          <TouchableOpacity style={styles.glassBtn} onPress={pickImages}>
+          <TouchableOpacity activeOpacity={0.7} style={styles.glassBtn} onPress={pickImages}>
             <Text style={styles.glassBtnText}>+ Open Gallery</Text>
           </TouchableOpacity>
         </View>
@@ -84,11 +91,15 @@ export default function App() {
             index={currentIndex}
             onSwipeDown={() => setIsViewerVisible(false)}
             enableSwipeDown
-            onClick={() => { setShowControls(!showControls); if(showInfo) setShowInfo(false); }}
+            onClick={() => { 
+              setShowControls(!showControls); 
+              if (showInfo) setShowInfo(false); 
+            }}
             renderIndicator={() => null}
             onChange={(idx) => {
               setCurrentIndex(idx);
               setRotation(0);
+              // Update details as user slides
               getBasicDetails(images[idx].url);
             }}
             renderImage={(props) => (
@@ -111,10 +122,11 @@ export default function App() {
             )}
           />
 
-          {/* Fixed Share Button Layout */}
+          {/* Centered Share Button */}
           {showControls && !showInfo && (
             <View style={styles.footerContainer}>
               <TouchableOpacity 
+                activeOpacity={0.8}
                 style={styles.shareBtn} 
                 onPress={() => Sharing.shareAsync(images[currentIndex].url)}
               >
@@ -123,7 +135,7 @@ export default function App() {
             </View>
           )}
 
-          {/* Simple and Accurate Info Panel */}
+          {/* Simple Info Panel */}
           {showInfo && (
             <View style={styles.infoSheet}>
               <Text style={styles.infoTitle}>Image Properties</Text>
@@ -151,8 +163,8 @@ const styles = StyleSheet.create({
   topBtn: { backgroundColor: 'rgba(0,0,0,0.7)', padding: 10, borderRadius: 20 },
   blueText: { color: '#339af0', fontWeight: 'bold' },
   whiteText: { color: 'white', fontWeight: 'bold' },
-  footerContainer: { position: 'absolute', bottom: 60, width: '100%', alignItems: 'center' },
-  shareBtn: { backgroundColor: 'white', paddingVertical: 14, paddingHorizontal: 40, borderRadius: 30, elevation: 5 },
+  footerContainer: { position: 'absolute', bottom: 70, width: '100%', alignItems: 'center', zIndex: 100 },
+  shareBtn: { backgroundColor: 'white', paddingVertical: 14, paddingHorizontal: 45, borderRadius: 30, elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 4.65 },
   shareText: { color: 'black', fontWeight: 'bold', fontSize: 16 },
   infoSheet: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'white', padding: 30, borderTopLeftRadius: 30, borderTopRightRadius: 30, zIndex: 200 },
   infoTitle: { fontSize: 18, fontWeight: 'bold', color: '#111' },
