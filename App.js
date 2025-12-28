@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, View, TouchableOpacity, Text, Modal, 
-  StatusBar, Platform, SafeAreaView, Image, ImageBackground 
+  StatusBar, Platform, SafeAreaView, Image, ImageBackground, BackHandler 
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Sharing from 'expo-sharing'; 
@@ -20,6 +20,25 @@ export default function App() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showInfo, setShowInfo] = useState(false);
   const [imageDetails, setImageDetails] = useState({ size: '...', resolution: '...' });
+
+  // Handle Hardware Back Button
+  useEffect(() => {
+    const backAction = () => {
+      if (isViewerVisible) {
+        setIsViewerVisible(false);
+        setShowInfo(false);
+        return true; // Prevents the app from closing
+      }
+      return false; // Closes the app if on home screen
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, [isViewerVisible]);
 
   useEffect(() => {
     async function init() {
@@ -59,16 +78,11 @@ export default function App() {
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
       const formatted = result.assets.map(asset => ({ url: asset.uri }));
-      
-      // FIX: Reset index and fetch details for the FIRST image immediately
       setImages(formatted);
       setCurrentIndex(0);
       setRotation(0);
       setShowInfo(false);
-      
-      // Explicitly call details for the first asset
       await getBasicDetails(result.assets[0].uri);
-      
       setIsViewerVisible(true);
     }
   };
@@ -84,7 +98,12 @@ export default function App() {
         </View>
       </ImageBackground>
 
-      <Modal visible={isViewerVisible} transparent={false} animationType="fade">
+      <Modal 
+        visible={isViewerVisible} 
+        transparent={false} 
+        animationType="fade"
+        onRequestClose={() => setIsViewerVisible(false)} // Secondary fix for Android Back button
+      >
         <View style={{ flex: 1, backgroundColor: 'black' }}>
           <ImageViewer 
             imageUrls={images} 
@@ -99,7 +118,6 @@ export default function App() {
             onChange={(idx) => {
               setCurrentIndex(idx);
               setRotation(0);
-              // Update details as user slides
               getBasicDetails(images[idx].url);
             }}
             renderImage={(props) => (
@@ -122,7 +140,6 @@ export default function App() {
             )}
           />
 
-          {/* Centered Share Button */}
           {showControls && !showInfo && (
             <View style={styles.footerContainer}>
               <TouchableOpacity 
@@ -135,7 +152,6 @@ export default function App() {
             </View>
           )}
 
-          {/* Simple Info Panel */}
           {showInfo && (
             <View style={styles.infoSheet}>
               <Text style={styles.infoTitle}>Image Properties</Text>
@@ -164,7 +180,7 @@ const styles = StyleSheet.create({
   blueText: { color: '#339af0', fontWeight: 'bold' },
   whiteText: { color: 'white', fontWeight: 'bold' },
   footerContainer: { position: 'absolute', bottom: 70, width: '100%', alignItems: 'center', zIndex: 100 },
-  shareBtn: { backgroundColor: 'white', paddingVertical: 14, paddingHorizontal: 45, borderRadius: 30, elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 4.65 },
+  shareBtn: { backgroundColor: 'white', paddingVertical: 14, paddingHorizontal: 45, borderRadius: 30, elevation: 8 },
   shareText: { color: 'black', fontWeight: 'bold', fontSize: 16 },
   infoSheet: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'white', padding: 30, borderTopLeftRadius: 30, borderTopRightRadius: 30, zIndex: 200 },
   infoTitle: { fontSize: 18, fontWeight: 'bold', color: '#111' },
