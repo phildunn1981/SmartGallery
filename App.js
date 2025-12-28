@@ -54,7 +54,10 @@ export default function App() {
         const mp = ((width * height) / 1000000).toFixed(1);
         setImageDetails({ size: `${sizeMB} MB`, resolution: `${width} × ${height} (${mp}MP)` });
       });
-    } catch (e) { console.log(e); }
+    } catch (e) { 
+      console.log(e); 
+      setImageDetails({ size: 'Unknown', resolution: 'Unknown' });
+    }
   };
 
   const pickImages = async () => {
@@ -63,13 +66,17 @@ export default function App() {
       allowsMultipleSelection: true,
       quality: 1,
     });
+    
     if (!result.canceled && result.assets) {
       const formatted = result.assets.map(asset => ({ url: asset.uri }));
       setImages(formatted);
       setCurrentIndex(0);
       setRotation(0);
       setShowInfo(false);
-      await getBasicDetails(result.assets[0].url);
+      
+      // FIX: Manually trigger details for the first image immediately
+      await getBasicDetails(result.assets[0].uri);
+      
       setIsViewerVisible(true);
     }
   };
@@ -97,7 +104,7 @@ export default function App() {
             onChange={(idx) => {
               setCurrentIndex(idx);
               setRotation(0);
-              getBasicDetails(images[idx].url);
+              getBasicDetails(images[idx].url); // Updates on slide
             }}
             renderImage={(props) => (
               <Image {...props} style={[props.style, { transform: [{ rotate: `${rotation}deg` }] }]} />
@@ -161,12 +168,7 @@ export default function App() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   background: { flex: 1 },
-  overlay: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    backgroundColor: 'rgba(0,0,0,0.15)' 
-  },
+  overlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.15)' },
   glassBtn: { 
     backgroundColor: 'rgba(255,255,255,0.45)', 
     paddingVertical: 16, 
@@ -180,7 +182,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 5
   },
-  glassBtnText: { color: '#002855', fontWeight: '800', fontSize: 18, letterSpacing: 0.5 },
+  glassBtnText: { color: '#002855', fontWeight: '800', fontSize: 18 },
   header: { position: 'absolute', top: 45, width: '100%', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 15, zIndex: 100 },
   topBtn: { backgroundColor: 'rgba(0,0,0,0.65)', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20 },
   blueText: { color: '#4dabf7', fontWeight: 'bold' },
@@ -209,25 +211,12 @@ const styles = StyleSheet.create({
     zIndex: 200,
     elevation: 20
   },
-  indicator: {
-    width: 40,
-    height: 5,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 3,
-    alignSelf: 'center',
-    marginBottom: 15
-  },
+  indicator: { width: 40, height: 5, backgroundColor: '#e0e0e0', borderRadius: 3, alignSelf: 'center', marginBottom: 15 },
   infoTitle: { fontSize: 20, fontWeight: '800', color: '#111', marginBottom: 5 },
   line: { height: 1, backgroundColor: '#f0f0f0', marginVertical: 15 },
   row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
   label: { fontSize: 14, color: '#666', fontWeight: '500' },
   value: { fontSize: 14, color: '#111', fontWeight: '700' },
-  hideBtn: { 
-    marginTop: 10, 
-    backgroundColor: '#1a1a1a', 
-    padding: 16, 
-    borderRadius: 16, 
-    alignItems: 'center' 
-  },
+  hideBtn: { marginTop: 10, backgroundColor: '#1a1a1a', padding: 16, borderRadius: 16, alignItems: 'center' },
   hideBtnText: { color: 'white', fontWeight: '700', fontSize: 15 }
 });
