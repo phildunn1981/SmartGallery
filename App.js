@@ -21,7 +21,6 @@ export default function App() {
   const [showInfo, setShowInfo] = useState(false);
   const [imageDetails, setImageDetails] = useState({ size: '...', resolution: '...' });
 
-  // Handle Android Back Button
   useEffect(() => {
     const backAction = () => {
       if (isViewerVisible) {
@@ -70,16 +69,8 @@ export default function App() {
       setCurrentIndex(0);
       setRotation(0);
       setShowInfo(false);
-      await getBasicDetails(result.assets[0].uri);
+      await getBasicDetails(result.assets[0].url);
       setIsViewerVisible(true);
-    }
-  };
-
-  // Shared function for Lens and General Sharing
-  const handleShare = async () => {
-    const currentImage = images[currentIndex].url;
-    if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(currentImage);
     }
   };
 
@@ -88,7 +79,7 @@ export default function App() {
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       <ImageBackground source={BG_IMAGE} style={styles.background} resizeMode="cover">
         <View style={styles.overlay}>
-          <TouchableOpacity activeOpacity={0.7} style={styles.glassBtn} onPress={pickImages}>
+          <TouchableOpacity activeOpacity={0.8} style={styles.glassBtn} onPress={pickImages}>
             <Text style={styles.glassBtnText}>+ Open Gallery</Text>
           </TouchableOpacity>
         </View>
@@ -114,13 +105,13 @@ export default function App() {
             renderHeader={() => (
               showControls && (
                 <SafeAreaView style={styles.header}>
-                  <TouchableOpacity style={styles.topBtn} onPress={() => setIsViewerVisible(false)}>
+                  <TouchableOpacity activeOpacity={0.7} style={styles.topBtn} onPress={() => setIsViewerVisible(false)}>
                     <Text style={styles.blueText}>✕ Close</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.topBtn} onPress={() => setShowInfo(!showInfo)}>
+                  <TouchableOpacity activeOpacity={0.7} style={styles.topBtn} onPress={() => setShowInfo(!showInfo)}>
                     <Text style={styles.whiteText}>{currentIndex + 1}/{images.length} ⓘ Info</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.topBtn} onPress={() => setRotation(r => (r + 90) % 360)}>
+                  <TouchableOpacity activeOpacity={0.7} style={styles.topBtn} onPress={() => setRotation(r => (r + 90) % 360)}>
                     <Text style={styles.blueText}>⟳ Rotate</Text>
                   </TouchableOpacity>
                 </SafeAreaView>
@@ -128,30 +119,36 @@ export default function App() {
             )}
           />
 
-          {/* MAIN SHARE BUTTON (For WhatsApp, Lens, Facebook, etc.) */}
           {showControls && !showInfo && (
             <View style={styles.footerContainer}>
-              <TouchableOpacity activeOpacity={0.8} style={styles.shareBtn} onPress={handleShare}>
-                <Text style={styles.shareText}>📤 Share / Search Image</Text>
+              <TouchableOpacity 
+                activeOpacity={0.85} 
+                style={styles.shareBtn} 
+                onPress={() => Sharing.shareAsync(images[currentIndex].url)}
+              >
+                <Text style={styles.shareText}>📤 Share Image</Text>
               </TouchableOpacity>
             </View>
           )}
 
-          {/* INFO PANEL */}
           {showInfo && (
             <View style={styles.infoSheet}>
+              <View style={styles.indicator} />
               <Text style={styles.infoTitle}>Image Properties</Text>
               <View style={styles.line} />
-              <Text style={styles.detail}><Text style={styles.bold}>Resolution:</Text> {imageDetails.resolution}</Text>
-              <Text style={styles.detail}><Text style={styles.bold}>File Size:</Text> {imageDetails.size}</Text>
               
-              {/* GOOGLE LENS SHORTCUT */}
-              <TouchableOpacity style={styles.lensBtn} onPress={handleShare}>
-                <Text style={styles.lensBtnText}>🔍 Search with Google Lens</Text>
-              </TouchableOpacity>
+              <View style={styles.row}>
+                <Text style={styles.label}>Resolution</Text>
+                <Text style={styles.value}>{imageDetails.resolution}</Text>
+              </View>
 
-              <TouchableOpacity style={styles.hideBtn} onPress={() => setShowInfo(false)}>
-                <Text style={styles.whiteText}>Hide Info</Text>
+              <View style={styles.row}>
+                <Text style={styles.label}>File Size</Text>
+                <Text style={styles.value}>{imageDetails.size}</Text>
+              </View>
+              
+              <TouchableOpacity activeOpacity={0.7} style={styles.hideBtn} onPress={() => setShowInfo(false)}>
+                <Text style={styles.hideBtnText}>Hide Details</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -164,22 +161,73 @@ export default function App() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   background: { flex: 1 },
-  overlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.1)' },
-  glassBtn: { backgroundColor: 'rgba(255,255,255,0.4)', paddingVertical: 15, paddingHorizontal: 30, borderRadius: 30, borderWidth: 1, borderColor: 'white' },
-  glassBtnText: { color: '#002855', fontWeight: 'bold', fontSize: 18 },
+  overlay: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    backgroundColor: 'rgba(0,0,0,0.15)' 
+  },
+  glassBtn: { 
+    backgroundColor: 'rgba(255,255,255,0.45)', 
+    paddingVertical: 16, 
+    paddingHorizontal: 32, 
+    borderRadius: 30, 
+    borderWidth: 1.5, 
+    borderColor: 'white',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5
+  },
+  glassBtnText: { color: '#002855', fontWeight: '800', fontSize: 18, letterSpacing: 0.5 },
   header: { position: 'absolute', top: 45, width: '100%', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 15, zIndex: 100 },
-  topBtn: { backgroundColor: 'rgba(0,0,0,0.7)', padding: 10, borderRadius: 20 },
-  blueText: { color: '#339af0', fontWeight: 'bold' },
+  topBtn: { backgroundColor: 'rgba(0,0,0,0.65)', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20 },
+  blueText: { color: '#4dabf7', fontWeight: 'bold' },
   whiteText: { color: 'white', fontWeight: 'bold' },
   footerContainer: { position: 'absolute', bottom: 70, width: '100%', alignItems: 'center', zIndex: 100 },
-  shareBtn: { backgroundColor: 'white', paddingVertical: 14, paddingHorizontal: 40, borderRadius: 30, elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84 },
-  shareText: { color: 'black', fontWeight: 'bold', fontSize: 16 },
-  infoSheet: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'white', padding: 30, borderTopLeftRadius: 30, borderTopRightRadius: 30, zIndex: 200 },
-  infoTitle: { fontSize: 18, fontWeight: 'bold', color: '#111' },
-  line: { height: 1, backgroundColor: '#eee', marginVertical: 15 },
-  detail: { fontSize: 15, marginBottom: 10, color: '#333' },
-  bold: { fontWeight: 'bold', color: '#000' },
-  lensBtn: { backgroundColor: '#4285F4', padding: 15, borderRadius: 15, alignItems: 'center', marginBottom: 10 },
-  lensBtnText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
-  hideBtn: { backgroundColor: '#222', padding: 15, borderRadius: 15, alignItems: 'center' }
+  shareBtn: { 
+    backgroundColor: 'white', 
+    paddingVertical: 14, 
+    paddingHorizontal: 50, 
+    borderRadius: 30, 
+    elevation: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8
+  },
+  shareText: { color: '#111', fontWeight: '800', fontSize: 16 },
+  infoSheet: { 
+    position: 'absolute', 
+    bottom: 0, 
+    width: '100%', 
+    backgroundColor: 'white', 
+    padding: 24, 
+    borderTopLeftRadius: 32, 
+    borderTopRightRadius: 32, 
+    zIndex: 200,
+    elevation: 20
+  },
+  indicator: {
+    width: 40,
+    height: 5,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 3,
+    alignSelf: 'center',
+    marginBottom: 15
+  },
+  infoTitle: { fontSize: 20, fontWeight: '800', color: '#111', marginBottom: 5 },
+  line: { height: 1, backgroundColor: '#f0f0f0', marginVertical: 15 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
+  label: { fontSize: 14, color: '#666', fontWeight: '500' },
+  value: { fontSize: 14, color: '#111', fontWeight: '700' },
+  hideBtn: { 
+    marginTop: 10, 
+    backgroundColor: '#1a1a1a', 
+    padding: 16, 
+    borderRadius: 16, 
+    alignItems: 'center' 
+  },
+  hideBtnText: { color: 'white', fontWeight: '700', fontSize: 15 }
 });
